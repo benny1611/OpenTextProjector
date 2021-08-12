@@ -26,6 +26,7 @@ GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b);
 void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonitors);
 void monitor_callback(GLFWmonitor* monitor, int event);
 void setupMonitor();
+void glSetup();
 void centerText();
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,GLenum severity, GLsizei length,const GLchar* msg, const void* data) {
 	printf("%d: %s, severity: %d\n",id, msg, severity);
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
     glfwSetMonitorCallback(monitor_callback);
 
     CHOICE_MONITORS = choiceMonitors;
-    DEFAULT_MONITOR = CHOICE_MONITORS[0];
+    DEFAULT_MONITOR = CHOICE_MONITORS[1];
     TEXT_SCALE = 1.0f;
     TEXT = L"HELLO WORLD!";
     FONT_SIZE = 20;
@@ -82,14 +83,9 @@ int main(int argc, char *argv[]) {
     printf("Done!\n");
 
     setupMonitor();
-    printf("1\n");
-    glfwMakeContextCurrent(WINDOW);
-    printf("2\n");
-    glewInit();
+
 	GLuint shader = CompileShaders(true, false, false, false, true);
-	printf("3\n");
 	glUseProgram(shader);
-	printf("4\n");
 
 	int error;
 
@@ -162,8 +158,6 @@ int main(int argc, char *argv[]) {
 	glUniform3f(6, 0.88f, 0.59f, 0.07f);
 
 	bool print = false;
-
-	printf("Entering while loop ... \n");
 
 	while (!glfwWindowShouldClose(WINDOW)) {
         monitor_event_mutex.lock();
@@ -280,16 +274,10 @@ void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonito
 
 GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b) {
 
-    printf("Kill me please\n");
-
 	GLuint shader_programme = glCreateProgram();
-
-	printf("Kill me please2\n");
-
 	GLuint vs, tcs, tes, gs, fs;
 
 	if (vs_b) {
-        printf("In vs_b\n");
 		FILE* vs_file;
 		long vs_file_len;
 		char* vertex_shader;
@@ -328,7 +316,6 @@ GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b) {
 
 		glAttachShader(shader_programme, vs);
 		free(vertex_shader);
-		printf("Done with vs..\n");
 	}
 	if (tcs_b) {
 		FILE* tcs_file;
@@ -449,7 +436,6 @@ GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b) {
 		free(geometry_shader);
 	}
 	if (fs_b) {
-        printf("In fs_b ...\n");
 		FILE* fs_file;
 		long fs_file_len;
 		char* fragment_shader;
@@ -487,7 +473,6 @@ GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b) {
 
 		glAttachShader(shader_programme, fs);
 		free(fragment_shader);
-		printf("Done with fs...\n");
 	}
 
 	glLinkProgram(shader_programme);
@@ -527,21 +512,25 @@ void monitor_callback(GLFWmonitor* monitor, int event) {
 }
 
 void setupMonitor() {
-
+    glfwInit();
     const GLFWvidmode* mode = glfwGetVideoMode(DEFAULT_MONITOR.monitor);
-
     glfwWindowHint(GLFW_RED_BITS, mode->redBits);
     glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
     glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
     glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
     WINDOW = glfwCreateWindow(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, "OpenTextProjector", NULL, NULL);
-    //glfwMakeContextCurrent(WINDOW);
+	glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, mode->refreshRate);
+	glfwMakeContextCurrent(WINDOW);
+	glSetup();
+	centerText();
+}
+
+void glSetup() {
+    glewInit();
+    glDebugMessageCallback(GLDebugMessageCallback, NULL);
     glEnable(GL_CULL_FACE);
 	glEnable(GL_DEBUG_OUTPUT);
-	//glDebugMessageCallback(GLDebugMessageCallback, NULL);
-	glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, mode->refreshRate);
-	glViewport(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height);
-	centerText();
+    glViewport(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height);
 }
 
 void centerText() {
