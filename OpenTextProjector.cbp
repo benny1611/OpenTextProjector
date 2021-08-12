@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="OpenTextProjector" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/OpenTextProjector" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+				<Linker>
+					<Add library="freeglut" />
+					<Add library="opengl32" />
+					<Add library="glu32" />
+					<Add library="winmm" />
+					<Add library="gdi32" />
+					<Add library="D:/Software/CodeBlocks/GLFW/lib/libglfw3.a" />
+					<Add library="D:/Software/CodeBlocks/GLFW/lib/libglfw3dll.a" />
+					<Add library="C:/MinGW/lib/libopengl32.a" />
+				</Linker>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/OpenTextProjector" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="freeglut" />
+					<Add library="opengl32" />
+					<Add library="glu32" />
+					<Add library="winmm" />
+					<Add library="gdi32" />
+					<Add library="D:/Software/CodeBlocks/GLFW/lib/libglfw3.a" />
+					<Add library="D:/Software/CodeBlocks/GLFW/lib/libglfw3dll.a" />
+					<Add library="C:/MinGW/lib/libopengl32.a" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add directory="C:/MinGW/include" />
+			<Add directory="D:/Software/CodeBlocks/GLFW/include" />
+			<Add directory="D:/Software/CodeBlocks/freetype-2.3.5-1-lib/include" />
+			<Add directory="D:/Software/CodeBlocks/glad/include" />
+		</Compiler>
+		<Linker>
+			<Add library="freeglut" />
+			<Add library="opengl32" />
+			<Add library="glu32" />
+			<Add library="winmm" />
+			<Add library="gdi32" />
+			<Add library="D:/Software/CodeBlocks/GLFW/lib/libglfw3.a" />
+			<Add library="D:/Software/CodeBlocks/GLFW/lib/libglfw3dll.a" />
+			<Add library="C:/MinGW/lib/libopengl32.a" />
+			<Add library="C:/MinGW/lib/glew32s.lib" />
+			<Add library="C:/MinGW/lib/glew32.lib" />
+			<Add library="D:/Software/CodeBlocks/freetype-2.3.5-1-lib/lib/freetype.lib" />
+			<Add directory="C:/MinGW/lib" />
+			<Add directory="D:/Software/CodeBlocks/GLFW/lib" />
+		</Linker>
+		<Unit filename="main.cpp" />
+		<Unit filename="main.h" />
+		<Unit filename="shader.h" />
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>
