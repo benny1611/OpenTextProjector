@@ -10,6 +10,7 @@ struct Monitor {
     Resolution maxResolution;
     GLFWmonitor* monitor;
     const char* name;
+    int refreshRate;
 };
 
 struct Character {

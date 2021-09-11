@@ -52,6 +52,8 @@
 			<Add directory="D:/Software/CodeBlocks/GLFW/include" />
 			<Add directory="D:/Software/CodeBlocks/freetype-2.3.5-1-lib/include" />
 			<Add directory="D:/Software/CodeBlocks/glad/include" />
+			<Add directory="D:/Software/CodeBlocks/plibsys-0.0.4/src" />
+			<Add directory="D:/Software/CodeBlocks/asio-1.18.1/include" />
 		</Compiler>
 		<Linker>
 			<Add library="freeglut" />
@@ -65,12 +67,15 @@
 			<Add library="C:/MinGW/lib/glew32s.lib" />
 			<Add library="C:/MinGW/lib/glew32.lib" />
 			<Add library="D:/Software/CodeBlocks/freetype-2.3.5-1-lib/lib/freetype.lib" />
+			<Add library="ws2_32" />
 			<Add directory="C:/MinGW/lib" />
 			<Add directory="D:/Software/CodeBlocks/GLFW/lib" />
 		</Linker>
+		<Unit filename="fast_mutex.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="main.h" />
-		<Unit filename="shader.h" />
+		<Unit filename="tinythread.cpp" />
+		<Unit filename="tinythread.h" />
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>

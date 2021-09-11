@@ -12,51 +12,59 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <boost/thread.hpp>
+#include <iostream>
 #include <map>
 #include <iterator>
-#include "main.h"
-
-
 #include <fstream>
+#include <asio.hpp>
+#include "main.h"
+#include "tinythread.h"
+#include "json.hpp"
 
 using std::map;
+using asio::ip::tcp;
+using json = nlohmann::json;
 
 GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b);
 void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonitors);
+std::string read_(tcp::socket & socket);
+std::list<std::wstring> getTextFromCommand(std::string command);
+std::list<std::string> split(std::string str, char del);
 void monitor_callback(GLFWmonitor* monitor, int event);
 void setupMonitor();
 void glSetup();
-void centerText();
+void centerText(int row = 0);
+void listen_for_connection(void* aArg);
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,GLenum severity, GLsizei length,const GLchar* msg, const void* data) {
 	printf("%d: %s, severity: %d\n",id, msg, severity);
-	/*std::ofstream myfile;
-	myfile.open("example.txt", std::ios_base::app);
-	myfile << "ID: " << id << " message: " << msg << " severity: " << severity << "\n";
-	myfile.close();*/
 }
+
+void log(std::string message);
 
 Monitor DEFAULT_MONITOR;
 GLfloat TEXT_X;
 GLfloat TEXT_Y;
 GLfloat TEXT_SCALE;
-std::wstring TEXT;
+std::list<std::wstring> TEXT;
 int FONT_SIZE;
 Monitor *CHOICE_MONITORS;
 char* FONT;
 GLFWwindow* WINDOW;
-boost::mutex monitor_event_mutex;
+tthread::mutex monitor_event_mutex;
 bool monitor_event = false;
-boost::mutex text_mutex;
+tthread::mutex text_mutex;
+tthread::mutex position_mutex;
 std::map<wchar_t, Character> Characters;
+GLuint buffer;
+bool rewriteLogFile = true;
 
 
 int main(int argc, char *argv[]) {
+    tthread::thread t(listen_for_connection, 0);
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_AUTO_ICONIFY, GL_FALSE);
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
@@ -73,9 +81,9 @@ int main(int argc, char *argv[]) {
     glfwSetMonitorCallback(monitor_callback);
 
     CHOICE_MONITORS = choiceMonitors;
-    DEFAULT_MONITOR = CHOICE_MONITORS[1];
+    DEFAULT_MONITOR = CHOICE_MONITORS[0];
     TEXT_SCALE = 1.0f;
-    TEXT = L"HELLO WORLD!";
+    TEXT.push_back(L"HELLO WORLD!");
     FONT_SIZE = 20;
     centerText();
     FONT = "./fonts/Raleway-Regular.ttf";
@@ -84,88 +92,10 @@ int main(int argc, char *argv[]) {
 
     setupMonitor();
 
-	GLuint shader = CompileShaders(true, false, false, false, true);
-	glUseProgram(shader);
-
-	int error;
-
-	FT_Library ft;
-	error = FT_Init_FreeType(&ft);
-
-	if (error) {
-        printf("Error while trying to initialize library: %d\n", error);
-	}
-
-	FT_Face face;
-	error = FT_New_Face(ft, FONT, 0, &face);
-
-	if ( error == FT_Err_Unknown_File_Format ) {
-      printf("Error: File format not supported\n");
-      exit(1);
-    }
-    else if ( error ) {
-      printf("Error while trying to initialize face: %d\n", error);
-    }
-
-	FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
-
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	for (GLuint c = 0; c < 512; c++) {
-        FT_Load_Char(face, (wchar_t)c, FT_LOAD_RENDER);
-
-		GLuint texture;
-		glCreateTextures(GL_TEXTURE_2D,1, &texture);
-
-		glTextureStorage2D(texture, 1, GL_R8, face->glyph->bitmap.width, face->glyph->bitmap.rows);
-		glTextureSubImage2D(texture, 0, 0, 0, face->glyph->bitmap.width, face->glyph->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, face->glyph->bitmap.buffer);
-
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		Character character = {
-            texture,
-            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            face->glyph->advance.x
-		};
-		Characters.insert(std::pair<wchar_t, Character>((wchar_t) c, character));
-	}
-
-	FT_Done_Face(face);
-	FT_Done_FreeType(ft);
-
-	glm::mat4 projection = glm::ortho(0.0f, (float)DEFAULT_MONITOR.maxResolution.width, 0.0f, (float)DEFAULT_MONITOR.maxResolution.height);
-	glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(projection));
-
-	GLuint vao;
-	glCreateVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	GLuint buffer;
-	glCreateBuffers(1, &buffer);
-
-	glNamedBufferStorage(buffer, sizeof(GLfloat) * 6 * 4, NULL, GL_DYNAMIC_STORAGE_BIT);
-	glVertexArrayVertexBuffer(vao, 0, buffer, 0, sizeof(GLfloat) * 4);
-	glVertexArrayAttribFormat(vao, 0, 4, GL_FLOAT, GL_FALSE, 0);
-	glVertexArrayAttribBinding(vao, 0, 0);
-	glEnableVertexArrayAttrib(vao, 0);
-
-	glUniform3f(6, 0.88f, 0.59f, 0.07f);
-
-	bool print = false;
-
 	while (!glfwWindowShouldClose(WINDOW)) {
         monitor_event_mutex.lock();
         if (monitor_event) {
-            glfwDestroyWindow(WINDOW);
-            setupMonitor();
             monitor_event = false;
-            TEXT = L"COME ON MAAAAN!";
         }
         monitor_event_mutex.unlock();
 
@@ -174,52 +104,55 @@ int main(int argc, char *argv[]) {
         GLfloat x = TEXT_X;
         GLfloat y = TEXT_Y;
         GLfloat scale = TEXT_SCALE;
-		std::wstring::iterator c;
-		for (c = TEXT.begin(); c != TEXT.end(); c++) {
+        int row = 0;
+        for (std::wstring t: TEXT) {
+            std::wstring::iterator c;
+            for (c = t.begin(); c != t.end(); c++) {
 
-			Character ch = Characters[*c];
-			if (print) {
-                printf("Here: %c and the int: %d\n", (wchar_t)*c, *c);
-			}
-			switch(*c) {
-			    case 537: // ș
-                    ch = Characters[351];
-                    break;
-                case 536: // Ș
-                    ch = Characters[350];
-                    break;
-                case 539: // ț
-                    ch = Characters[355];
-                    break;
-                case 538: // Ț
-                    ch = Characters[354];
-                    break;
-			}
+                Character ch = Characters[*c];
+                switch(*c) {
+                    case 537: // ș
+                        ch = Characters[351];
+                        break;
+                    case 536: // Ș
+                        ch = Characters[350];
+                        break;
+                    case 539: // ț
+                        ch = Characters[355];
+                        break;
+                    case 538: // Ț
+                        ch = Characters[354];
+                        break;
+                }
 
-			GLfloat xpos = x + ch.Bearing.x * scale;
-			GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
+                GLfloat xpos = x + ch.Bearing.x * scale;
+                GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
 
-			GLfloat w = ch.Size.x * scale;
-			GLfloat h = ch.Size.y * scale;
-			// Update VBO for each character
-			GLfloat vertices[6*4] = {
-				 xpos,     ypos + h,   0.0f, 0.0f ,
-				 xpos,     ypos,       0.0f, 1.0f ,
-				 xpos + w, ypos,       1.0f, 1.0f ,
+                GLfloat w = ch.Size.x * scale;
+                GLfloat h = ch.Size.y * scale;
+                // Update VBO for each character
+                GLfloat vertices[6*4] = {
+                     xpos,     ypos + h,   0.0f, 0.0f ,
+                     xpos,     ypos,       0.0f, 1.0f ,
+                     xpos + w, ypos,       1.0f, 1.0f ,
 
-				 xpos,     ypos + h,   0.0f, 0.0f ,
-				 xpos + w, ypos,       1.0f, 1.0f ,
-				 xpos + w, ypos + h,   1.0f, 0.0f
-			};
+                     xpos,     ypos + h,   0.0f, 0.0f ,
+                     xpos + w, ypos,       1.0f, 1.0f ,
+                     xpos + w, ypos + h,   1.0f, 0.0f
+                };
 
-			glNamedBufferSubData(buffer, 0, sizeof(GLfloat)*6*4, vertices);
-			glBindTexture(GL_TEXTURE_2D, ch.TextureID);
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-			x += (ch.Advance >> 6) * scale;
+                glNamedBufferSubData(buffer, 0, sizeof(GLfloat)*6*4, vertices);
+                glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+                x += (ch.Advance >> 6) * scale;
 
-		}
+            }
+            centerText(row);
+            row++;
+            x = TEXT_X;
+            y = TEXT_Y;
+        }
 		text_mutex.unlock();
-		print = false;
 
 		glfwSwapBuffers(WINDOW);
 
@@ -233,12 +166,151 @@ int main(int argc, char *argv[]) {
 }
 
 
+void listen_for_connection(void* aArg) {
+    while (true) {
+        try {
+            asio::io_context io_context;
+
+            tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 8080));
+
+            tcp::socket socket(io_context);
+
+            acceptor.accept(socket);
+
+            for (;;)
+            {
+                std::string message = read_(socket);
+                json command = json::parse(message);
+                try {
+                    std::vector<std::string> text_list = command["text"].get<std::vector<std::string>>();
+                    std::string tmp_text = text_list.front();
+                    std::list<std::wstring> result = getTextFromCommand(message);
+                    text_mutex.lock();
+                    TEXT.clear();
+                    for (std::wstring s: result) {
+                        TEXT.push_back(s);
+                    }
+                    text_mutex.unlock();
+                } catch (std::exception& e) {
+                    std::cout << e.what() << std::endl;
+                }
+            }
+        } catch (std::exception& e) {
+            std::cout << e.what() << std::endl;
+        }
+    }
+}
+
+std::list<std::wstring> getTextFromCommand(std::string command) {
+    int position = command.find("text");
+    std::list<std::wstring> results;
+    if(position == std::string::npos) {
+        return results;
+    }
+    std::string tmp_text = command.substr(position, command.length() - position);
+    position = tmp_text.find("[");
+    tmp_text = tmp_text.substr(position+1, command.length() - position);
+    position = tmp_text.find("]");
+    tmp_text = tmp_text.substr(0, position);
+    std::list<std::string> texts = split(tmp_text, '"');
+    for (std::string t: texts) {
+        std::wstring result = L"";
+        for(int i=0; i<t.length(); i++) {
+            if ((unsigned int) t[i] == 92) {
+                std::string character = t.substr(i+1, 5);
+                i = i+5;
+                if (character == "u00e2") {
+                    result += L"â";
+                } else if (character == "u00c2") {
+                    result += L"Â";
+                } else if (character == "u0103") {
+                    result += L"ă";
+                } else if (character == "u0102") {
+                    result += L"Ă";
+                } else if (character == "u021b") {
+                    result += L"ț";
+                } else if (character == "u021a") {
+                    result += L"Ț";
+                } else if (character == "u0219") {
+                    result += L"ș";
+                } else if (character == "u0218") {
+                    result += L"Ș";
+                } else if (character == "u00ce") {
+                    result += L"Î";
+                } else if (character == "u00ee") {
+                    result += L"î";
+                } else if (character == "u00d6") {
+                    result += L"Ö";
+                } else if (character == "u00f6") {
+                    result += L"ö";
+                } else if (character == "u00c4") {
+                    result += L"Ä";
+                } else if (character == "u00e4") {
+                    result += L"ä";
+                } else if (character == "u00dc") {
+                    result += L"Ü";
+                } else if (character == "u00fc") {
+                    result += L"ü";
+                } else {
+                    i = i-5;
+                    result += t[i];
+                }
+            } else {
+                result += t[i];
+            }
+        }
+        results.push_back(result);
+    }
+    return results;
+}
+
+std::list<std::string> split(std::string str, char del) {
+    std::list<std::string> results;
+    // declaring temp string to store the curr "word" upto del
+      std::string temp = "";
+
+      for(int i=0; i<(int)str.size(); i++){
+        // If cur char is not del, then append it to the cur "word", otherwise
+        // you have completed the word, print it, and start a new word.
+        if(str[i] != del){
+            temp += str[i];
+        } else{
+            bool blank = false;
+            if (temp.empty() || std::all_of(temp.begin(), temp.end(), [](char c){return std::isspace(c);})) {
+                  blank = true;
+            }
+            std::string temp2 = temp;
+            temp2.erase(remove(temp2.begin(), temp2.end(), ','), temp2.end());
+            if (temp2.empty() || std::all_of(temp2.begin(), temp2.end(), [](char c){return std::isspace(c);})) {
+                  blank = true;
+            }
+            if (!blank) {
+                results.push_back(temp);
+            }
+            temp = "";
+        }
+    }
+    return results;
+}
+
+std::string read_(tcp::socket & socket) {
+    asio::streambuf buf;
+    asio::read_until( socket, buf, "\n" );
+    auto data = asio::buffer_cast<const char*>(buf.data());
+    std::string s(reinterpret_cast<char const*>(data));
+    std::string result = "";
+    return s;
+}
+
+void send_(tcp::socket & socket, const std::string& message) {
+    const std::string msg = message + "\n";
+    asio::write( socket, asio::buffer(message) );
+}
+
 
 void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonitors) {
     printf("\nDetecting monitors ...\n\n");
-    //int totalMonitor = monitors
     map<GLFWmonitor*, GLFWvidmode> monitorsModeMap;
-    //Monitor choiceMonitors[totalMonitor];
 
     for(int currMonitor=0;currMonitor<totalMonitor;currMonitor++)
     {
@@ -267,6 +339,7 @@ void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonito
         choiceMonitors[i].maxResolution.width = it->second.width;
         choiceMonitors[i].monitor = it->first;
         choiceMonitors[i].name = name;
+        choiceMonitors[i].refreshRate = it->second.refreshRate;
         i++;
     }
 }
@@ -506,6 +579,7 @@ void monitor_callback(GLFWmonitor* monitor, int event) {
         getMonitors(monitors, totalMonitor, choiceMonitors);
         CHOICE_MONITORS = choiceMonitors;
         DEFAULT_MONITOR = CHOICE_MONITORS[0];
+        glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, DEFAULT_MONITOR.refreshRate);
         monitor_event = true;
     }
     monitor_event_mutex.unlock();
@@ -513,13 +587,16 @@ void monitor_callback(GLFWmonitor* monitor, int event) {
 
 void setupMonitor() {
     glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_AUTO_ICONIFY, GL_FALSE);
     const GLFWvidmode* mode = glfwGetVideoMode(DEFAULT_MONITOR.monitor);
     glfwWindowHint(GLFW_RED_BITS, mode->redBits);
     glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
     glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
     glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-    WINDOW = glfwCreateWindow(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, "OpenTextProjector", NULL, NULL);
-	glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, mode->refreshRate);
+    WINDOW = glfwCreateWindow(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, "OpenTextProjector", DEFAULT_MONITOR.monitor, nullptr);
 	glfwMakeContextCurrent(WINDOW);
 	glSetup();
 	centerText();
@@ -531,10 +608,101 @@ void glSetup() {
     glEnable(GL_CULL_FACE);
 	glEnable(GL_DEBUG_OUTPUT);
     glViewport(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height);
+    GLuint shader = CompileShaders(true, false, false, false, true);
+	glUseProgram(shader);
+	int error;
+
+	FT_Library ft;
+	error = FT_Init_FreeType(&ft);
+
+	if (error) {
+        printf("Error while trying to initialize library: %d\n", error);
+	}
+
+	FT_Face face;
+	error = FT_New_Face(ft, FONT, 0, &face);
+
+	if ( error == FT_Err_Unknown_File_Format ) {
+      printf("Error: File format not supported\n");
+      exit(1);
+    }
+    else if ( error ) {
+      printf("Error while trying to initialize face: %d\n", error);
+    }
+
+	FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	if(!Characters.empty()) {
+        Characters.clear();
+	}
+
+	for (GLuint c = 0; c < 512; c++) {
+        FT_Load_Char(face, (wchar_t)c, FT_LOAD_RENDER);
+
+		GLuint texture;
+		glCreateTextures(GL_TEXTURE_2D,1, &texture);
+
+		glTextureStorage2D(texture, 1, GL_R8, face->glyph->bitmap.width, face->glyph->bitmap.rows);
+		glTextureSubImage2D(texture, 0, 0, 0, face->glyph->bitmap.width, face->glyph->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, face->glyph->bitmap.buffer);
+
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		Character character = {
+            texture,
+            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+            face->glyph->advance.x
+		};
+		Characters.insert(std::pair<wchar_t, Character>((wchar_t) c, character));
+	}
+
+	FT_Done_Face(face);
+	FT_Done_FreeType(ft);
+
+	glm::mat4 projection = glm::ortho(0.0f, (float)DEFAULT_MONITOR.maxResolution.width, 0.0f, (float)DEFAULT_MONITOR.maxResolution.height);
+	glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(projection));
+
+	GLuint vao;
+	glCreateVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
+	glCreateBuffers(1, &buffer);
+
+	glNamedBufferStorage(buffer, sizeof(GLfloat) * 6 * 4, NULL, GL_DYNAMIC_STORAGE_BIT);
+	glVertexArrayVertexBuffer(vao, 0, buffer, 0, sizeof(GLfloat) * 4);
+	glVertexArrayAttribFormat(vao, 0, 4, GL_FLOAT, GL_FALSE, 0);
+	glVertexArrayAttribBinding(vao, 0, 0);
+	glEnableVertexArrayAttrib(vao, 0);
+
+	glUniform3f(6, 0.88f, 0.59f, 0.07f);
 }
 
-void centerText() {
-    TEXT_X = (float)DEFAULT_MONITOR.maxResolution.width/2.0f - (((float)TEXT.length()*FONT_SIZE)/2.0f);
-    TEXT_Y = (float)DEFAULT_MONITOR.maxResolution.height/2.0f - ((float)FONT_SIZE/2.0f);
+void centerText(int row) {
+    position_mutex.lock();
+    auto txt = TEXT.begin();
+    std::advance(txt, row);
+    TEXT_X = (float)DEFAULT_MONITOR.maxResolution.width/2.0f - (((float)(*txt).length()*FONT_SIZE)/2.0f);
+    TEXT_Y = (float)DEFAULT_MONITOR.maxResolution.height/2.0f - ((TEXT.size()-row)*((float)FONT_SIZE/2.0f));
+    position_mutex.unlock();
+}
+
+void log(std::string message) {
+    std::ofstream myfile;
+	if (rewriteLogFile) {
+        myfile.open("debug.log");
+        rewriteLogFile = false;
+	} else {
+        myfile.open("debug.log", std::ios_base::app);
+	}
+
+	myfile << message << "\n";
+	myfile.close();
 }
 
