@@ -15,7 +15,6 @@
 					<Add option="-g" />
 				</Compiler>
 				<Linker>
-					<Add library="freeglut" />
 					<Add library="opengl32" />
 					<Add library="glu32" />
 					<Add library="winmm" />
@@ -35,7 +34,6 @@
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
-					<Add library="freeglut" />
 					<Add library="opengl32" />
 					<Add library="glu32" />
 					<Add library="winmm" />
@@ -54,7 +52,6 @@
 			<Add directory="includes/asio" />
 		</Compiler>
 		<Linker>
-			<Add library="freeglut" />
 			<Add library="opengl32" />
 			<Add library="glu32" />
 			<Add library="winmm" />

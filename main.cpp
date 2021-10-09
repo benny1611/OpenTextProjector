@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     TEXT.push_back(L"HELLO WORLD! x2");
     TEXT_WIDTH = 0;
     TEXT_HEIGHT = 0;
-    FONT_SIZE = 20;
+    FONT_SIZE = 30;
     FONT = "./fonts/Raleway-Regular.ttf";
     PADDING = 5;
 
