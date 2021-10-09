@@ -107,9 +107,6 @@ int main(int argc, char *argv[]) {
         monitor_event_mutex.unlock();
 
         text_mutex.lock();
-        glClear(GL_COLOR_BUFFER_BIT);
-        GLfloat x = TEXT_X;
-        GLfloat y = TEXT_Y;
         GLfloat scale = TEXT_SCALE;
         GLuint globalHeight = 0;
         std::list<std::wstring>::iterator t;
@@ -150,7 +147,10 @@ int main(int argc, char *argv[]) {
 
 	/*DRAWING NOW*/
 	int row = 1;
+    GLfloat x = TEXT_X;
+    GLfloat y = TEXT_Y;
 	TEXT_HEIGHT = globalHeight + PADDING;
+	glClear(GL_COLOR_BUFFER_BIT);
 	for (t = TEXT.begin(); t != TEXT.end(); ++t) {
             std::list<int>::iterator it = width_list.begin();
             advance(it, row-1);
@@ -200,11 +200,9 @@ int main(int argc, char *argv[]) {
                 x += (ch.Advance >> 6) * scale;
             }
             text_mutex.unlock();
-
-            glfwSwapBuffers(WINDOW);
-
-            glfwPollEvents();
 	}
+	glfwSwapBuffers(WINDOW);
+	glfwPollEvents();
 }
 	printf("%d", glGetError());
 
@@ -732,7 +730,6 @@ void glSetup() {
 
 void centerText(int rows, int row) {
     position_mutex.lock();
-    //std::cout << "This is the width: " << (float)DEFAULT_MONITOR.maxResolution.width << std::endl << "And this is the height: " << (float)DEFAULT_MONITOR.maxResolution.height << std::endl << "And this is the text width: " << TEXT_WIDTH << std::endl << "And this is the text height: " << TEXT_HEIGHT << std::endl;
     TEXT_X = (float)DEFAULT_MONITOR.maxResolution.width/2.0f - ((float)TEXT_WIDTH/2.0f);
     TEXT_Y = (float)DEFAULT_MONITOR.maxResolution.height/2.0f + (((float)rows * (float)TEXT_HEIGHT)/2.0f) - ((float)row * (float)TEXT_HEIGHT);
     position_mutex.unlock();
