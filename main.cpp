@@ -18,8 +18,8 @@
 #include <fstream>
 #include <asio.hpp>
 #include "main.h"
-#include "tinythread.h"
-#include "json.hpp"
+#include "libraries/tinythread.h"
+#include "libraries/json.hpp"
 
 using std::map;
 using asio::ip::tcp;
