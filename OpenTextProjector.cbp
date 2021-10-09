@@ -72,6 +72,7 @@
 			<Add directory="D:/Software/CodeBlocks/GLFW/lib" />
 		</Linker>
 		<Unit filename="fast_mutex.h" />
+		<Unit filename="json.hpp" />
 		<Unit filename="main.cpp" />
 		<Unit filename="main.h" />
 		<Unit filename="tinythread.cpp" />

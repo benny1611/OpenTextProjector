@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1631358450 source:d:\software\some other projects\c-projects\opentextprojector\main.cpp
+1633782126 source:d:\software\some other projects\c-projects\opentextprojector\main.cpp
 	<GL/glew.h>
 	<GLFW/glfw3.h>
 	<glm/glm.hpp>
@@ -2305,7 +2305,7 @@
 
 1627111188 c:\mingw\include\freetype\config\ftheader.h
 
-1628784440 d:\software\some other projects\c-projects\opentextprojector\main.h
+1632564920 d:\software\some other projects\c-projects\opentextprojector\main.h
 
 1618330988 d:\software\codeblocks\boost_1_76_0\boost\thread.hpp
 	<boost/thread/thread.hpp>

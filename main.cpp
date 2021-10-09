@@ -33,7 +33,7 @@ std::list<std::string> split(std::string str, char del);
 void monitor_callback(GLFWmonitor* monitor, int event);
 void setupMonitor();
 void glSetup();
-void centerText(int row = 0);
+void centerText(int rows, int row);
 void listen_for_connection(void* aArg);
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,GLenum severity, GLsizei length,const GLchar* msg, const void* data) {
 	printf("%d: %s, severity: %d\n",id, msg, severity);
@@ -44,6 +44,9 @@ void log(std::string message);
 Monitor DEFAULT_MONITOR;
 GLfloat TEXT_X;
 GLfloat TEXT_Y;
+GLuint TEXT_WIDTH;
+GLuint TEXT_HEIGHT;
+GLuint PADDING;
 GLfloat TEXT_SCALE;
 std::list<std::wstring> TEXT;
 int FONT_SIZE;
@@ -83,15 +86,19 @@ int main(int argc, char *argv[]) {
     CHOICE_MONITORS = choiceMonitors;
     DEFAULT_MONITOR = CHOICE_MONITORS[0];
     TEXT_SCALE = 1.0f;
-    TEXT.push_back(L"HELLO WORLD!");
+    TEXT.push_back(L"HELLO WORLD! number 1");
+    TEXT.push_back(L"HELLO WORLD! x2");
+    TEXT_WIDTH = 0;
+    TEXT_HEIGHT = 0;
     FONT_SIZE = 20;
-    centerText();
     FONT = "./fonts/Raleway-Regular.ttf";
+    PADDING = 5;
 
     printf("Done!\n");
 
     setupMonitor();
 
+    std::list<int> width_list;
 	while (!glfwWindowShouldClose(WINDOW)) {
         monitor_event_mutex.lock();
         if (monitor_event) {
@@ -104,11 +111,14 @@ int main(int argc, char *argv[]) {
         GLfloat x = TEXT_X;
         GLfloat y = TEXT_Y;
         GLfloat scale = TEXT_SCALE;
-        int row = 0;
-        for (std::wstring t: TEXT) {
+        GLuint globalHeight = 0;
+        std::list<std::wstring>::iterator t;
+        width_list.clear();
+        for (t = TEXT.begin(); t != TEXT.end(); ++t) {
+            TEXT_WIDTH = 0;
+            TEXT_HEIGHT = 0;
             std::wstring::iterator c;
-            for (c = t.begin(); c != t.end(); c++) {
-
+            for (c = (*t).begin(); c != (*t).end(); c++) {
                 Character ch = Characters[*c];
                 switch(*c) {
                     case 537: // ș
@@ -124,12 +134,55 @@ int main(int argc, char *argv[]) {
                         ch = Characters[354];
                         break;
                 }
+                GLfloat w = ch.Size.x * scale;
+                GLfloat h = ch.Size.y * scale;
+
+                TEXT_WIDTH += w;
+                if (h > TEXT_HEIGHT) {
+                    TEXT_HEIGHT = h;
+                }
+            }
+        width_list.push_back(TEXT_WIDTH);
+        if (TEXT_HEIGHT > globalHeight) {
+            globalHeight = TEXT_HEIGHT;
+        }
+	}
+
+	/*DRAWING NOW*/
+	int row = 1;
+	TEXT_HEIGHT = globalHeight + PADDING;
+	for (t = TEXT.begin(); t != TEXT.end(); ++t) {
+            std::list<int>::iterator it = width_list.begin();
+            advance(it, row-1);
+            TEXT_WIDTH = *it;
+            centerText(TEXT.size(), row);
+            row++;
+            x = TEXT_X;
+            y = TEXT_Y;
+            std::wstring::iterator c;
+            for (c = (*t).begin(); c != (*t).end(); c++) {
+                Character ch = Characters[*c];
+                switch(*c) {
+                    case 537: // ș
+                        ch = Characters[351];
+                        break;
+                    case 536: // Ș
+                        ch = Characters[350];
+                        break;
+                    case 539: // ț
+                        ch = Characters[355];
+                        break;
+                    case 538: // Ț
+                        ch = Characters[354];
+                        break;
+                }
+                GLfloat w = ch.Size.x * scale;
+                GLfloat h = ch.Size.y * scale;
 
                 GLfloat xpos = x + ch.Bearing.x * scale;
                 GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
 
-                GLfloat w = ch.Size.x * scale;
-                GLfloat h = ch.Size.y * scale;
+
                 // Update VBO for each character
                 GLfloat vertices[6*4] = {
                      xpos,     ypos + h,   0.0f, 0.0f ,
@@ -145,20 +198,14 @@ int main(int argc, char *argv[]) {
                 glBindTexture(GL_TEXTURE_2D, ch.TextureID);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
                 x += (ch.Advance >> 6) * scale;
-
             }
-            centerText(row);
-            row++;
-            x = TEXT_X;
-            y = TEXT_Y;
-        }
-		text_mutex.unlock();
+            text_mutex.unlock();
 
-		glfwSwapBuffers(WINDOW);
+            glfwSwapBuffers(WINDOW);
 
-		glfwPollEvents();
-
+            glfwPollEvents();
 	}
+}
 	printf("%d", glGetError());
 
     glfwTerminate();
@@ -274,7 +321,7 @@ std::list<std::string> split(std::string str, char del) {
         // you have completed the word, print it, and start a new word.
         if(str[i] != del){
             temp += str[i];
-        } else{
+        } else {
             bool blank = false;
             if (temp.empty() || std::all_of(temp.begin(), temp.end(), [](char c){return std::isspace(c);})) {
                   blank = true;
@@ -599,7 +646,6 @@ void setupMonitor() {
     WINDOW = glfwCreateWindow(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, "OpenTextProjector", DEFAULT_MONITOR.monitor, nullptr);
 	glfwMakeContextCurrent(WINDOW);
 	glSetup();
-	centerText();
 }
 
 void glSetup() {
@@ -684,12 +730,11 @@ void glSetup() {
 	glUniform3f(6, 0.88f, 0.59f, 0.07f);
 }
 
-void centerText(int row) {
+void centerText(int rows, int row) {
     position_mutex.lock();
-    auto txt = TEXT.begin();
-    std::advance(txt, row);
-    TEXT_X = (float)DEFAULT_MONITOR.maxResolution.width/2.0f - (((float)(*txt).length()*FONT_SIZE)/2.0f);
-    TEXT_Y = (float)DEFAULT_MONITOR.maxResolution.height/2.0f - ((TEXT.size()-row)*((float)FONT_SIZE/2.0f));
+    //std::cout << "This is the width: " << (float)DEFAULT_MONITOR.maxResolution.width << std::endl << "And this is the height: " << (float)DEFAULT_MONITOR.maxResolution.height << std::endl << "And this is the text width: " << TEXT_WIDTH << std::endl << "And this is the text height: " << TEXT_HEIGHT << std::endl;
+    TEXT_X = (float)DEFAULT_MONITOR.maxResolution.width/2.0f - ((float)TEXT_WIDTH/2.0f);
+    TEXT_Y = (float)DEFAULT_MONITOR.maxResolution.height/2.0f + (((float)rows * (float)TEXT_HEIGHT)/2.0f) - ((float)row * (float)TEXT_HEIGHT);
     position_mutex.unlock();
 }
 
