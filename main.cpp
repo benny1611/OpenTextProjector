@@ -139,19 +139,19 @@ int main(int argc, char *argv[]) {
                     TEXT_HEIGHT = h;
                 }
             }
-        width_list.push_back(TEXT_WIDTH);
-        if (TEXT_HEIGHT > globalHeight) {
-            globalHeight = TEXT_HEIGHT;
+            width_list.push_back(TEXT_WIDTH);
+            if (TEXT_HEIGHT > globalHeight) {
+                globalHeight = TEXT_HEIGHT;
+            }
         }
-	}
 
-	/*DRAWING NOW*/
-	int row = 1;
-    GLfloat x = TEXT_X;
-    GLfloat y = TEXT_Y;
-	TEXT_HEIGHT = globalHeight + PADDING;
-	glClear(GL_COLOR_BUFFER_BIT);
-	for (t = TEXT.begin(); t != TEXT.end(); ++t) {
+        /*DRAWING NOW*/
+        int row = 1;
+        GLfloat x = TEXT_X;
+        GLfloat y = TEXT_Y;
+        TEXT_HEIGHT = globalHeight + PADDING;
+        glClear(GL_COLOR_BUFFER_BIT);
+        for (t = TEXT.begin(); t != TEXT.end(); ++t) {
             std::list<int>::iterator it = width_list.begin();
             advance(it, row-1);
             TEXT_WIDTH = *it;
@@ -200,10 +200,10 @@ int main(int argc, char *argv[]) {
                 x += (ch.Advance >> 6) * scale;
             }
             text_mutex.unlock();
-	}
-	glfwSwapBuffers(WINDOW);
-	glfwPollEvents();
-}
+        }
+        glfwSwapBuffers(WINDOW);
+        glfwPollEvents();
+    }
 	printf("%d", glGetError());
 
     glfwTerminate();
