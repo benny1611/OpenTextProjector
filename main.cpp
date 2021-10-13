@@ -24,12 +24,13 @@
 using std::map;
 using asio::ip::tcp;
 using json = nlohmann::json;
+using namespace std;
 
 GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b);
 void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonitors);
-std::string read_(tcp::socket & socket);
-std::list<std::wstring> getTextFromCommand(std::vector<std::string> text_list);
-std::list<std::string> split(std::string str, char del);
+string read_(tcp::socket & socket);
+list<wstring> getTextFromCommand(vector<string> text_list);
+list<string> split(string str, char del);
 void monitor_callback(GLFWmonitor* monitor, int event);
 void setupMonitor();
 void glSetup();
@@ -39,7 +40,7 @@ void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,GLenu
 	printf("%d: %s, severity: %d\n",id, msg, severity);
 }
 
-void log(std::string message);
+void log(string message);
 
 Monitor DEFAULT_MONITOR;
 GLfloat TEXT_X;
