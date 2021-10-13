@@ -28,7 +28,7 @@ using json = nlohmann::json;
 GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b);
 void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonitors);
 std::string read_(tcp::socket & socket);
-std::list<std::wstring> getTextFromCommand(std::string command);
+std::list<std::wstring> getTextFromCommand(std::vector<std::string> text_list);
 std::list<std::string> split(std::string str, char del);
 void monitor_callback(GLFWmonitor* monitor, int event);
 void setupMonitor();
@@ -224,12 +224,13 @@ void listen_for_connection(void* aArg) {
 
             for (;;)
             {
+                // JSON command
                 std::string message = read_(socket);
                 json command = json::parse(message);
+                // get the text to be shown
                 try {
                     std::vector<std::string> text_list = command["text"].get<std::vector<std::string>>();
-                    std::string tmp_text = text_list.front();
-                    std::list<std::wstring> result = getTextFromCommand(message);
+                    std::list<std::wstring> result = getTextFromCommand(text_list);
                     text_mutex.lock();
                     TEXT.clear();
                     for (std::wstring s: result) {
@@ -239,6 +240,42 @@ void listen_for_connection(void* aArg) {
                 } catch (std::exception& e) {
                     std::cout << e.what() << std::endl;
                 }
+                // get the text size
+                try {
+                    int font_size = command["font_size"].get<int>();
+                    text_mutex.lock();
+                    FONT_SIZE = font_size;
+                    text_mutex.unlock();
+                } catch (std::exception& e) {
+                    //ignore
+                }
+                //get the font
+                try {
+                    std::string font = command["font"].get<std::string>();
+                    std::ifstream ifile;
+                    ifile.open("./fonts/" + font);
+                    if (ifile) { // only change font if the font exists
+                        text_mutex.lock();
+                        ifile.close();
+                        char c[font.size() + 1];
+                        font.copy(c, font.size() + 1);
+                        c[font.size()] = '\0';
+                        FONT = c;
+                        glSetup();
+                        text_mutex.unlock();
+                    }
+                } catch (std::exception& e) {
+                    //ignore
+                }
+                try {
+                    int monitor = command["monitor"].get<int>();
+                    int nr_of_monitors = (sizeof CHOICE_MONITORS / sizeof CHOICE_MONITORS[0]);
+                    if (monitor < nr_of_monitors && monitor >= 0) {
+                        DEFAULT_MONITOR = CHOICE_MONITORS[monitor];
+                    }
+                } catch (std::exception& e) {
+                    //ignore
+                }
             }
         } catch (std::exception& e) {
             std::cout << e.what() << std::endl;
@@ -246,18 +283,10 @@ void listen_for_connection(void* aArg) {
     }
 }
 
-std::list<std::wstring> getTextFromCommand(std::string command) {
-    int position = command.find("text");
+
+std::list<std::wstring> getTextFromCommand(std::vector<std::string> text_list) {
     std::list<std::wstring> results;
-    if(position == std::string::npos) {
-        return results;
-    }
-    std::string tmp_text = command.substr(position, command.length() - position);
-    position = tmp_text.find("[");
-    tmp_text = tmp_text.substr(position+1, command.length() - position);
-    position = tmp_text.find("]");
-    tmp_text = tmp_text.substr(0, position);
-    std::list<std::string> texts = split(tmp_text, '"');
+    std::list<std::string> texts(text_list.begin(), text_list.end());
     for (std::string t: texts) {
         std::wstring result = L"";
         for(int i=0; i<t.length(); i++) {
@@ -309,6 +338,7 @@ std::list<std::wstring> getTextFromCommand(std::string command) {
     return results;
 }
 
+
 std::list<std::string> split(std::string str, char del) {
     std::list<std::string> results;
     // declaring temp string to store the curr "word" upto del
@@ -338,6 +368,7 @@ std::list<std::string> split(std::string str, char del) {
     return results;
 }
 
+
 std::string read_(tcp::socket & socket) {
     asio::streambuf buf;
     asio::read_until( socket, buf, "\n" );
@@ -346,6 +377,7 @@ std::string read_(tcp::socket & socket) {
     std::string result = "";
     return s;
 }
+
 
 void send_(tcp::socket & socket, const std::string& message) {
     const std::string msg = message + "\n";
@@ -630,6 +662,7 @@ void monitor_callback(GLFWmonitor* monitor, int event) {
     monitor_event_mutex.unlock();
 }
 
+
 void setupMonitor() {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -645,6 +678,7 @@ void setupMonitor() {
 	glfwMakeContextCurrent(WINDOW);
 	glSetup();
 }
+
 
 void glSetup() {
     glewInit();
@@ -728,12 +762,14 @@ void glSetup() {
 	glUniform3f(6, 0.88f, 0.59f, 0.07f);
 }
 
+
 void centerText(int rows, int row) {
     position_mutex.lock();
     TEXT_X = (float)DEFAULT_MONITOR.maxResolution.width/2.0f - ((float)TEXT_WIDTH/2.0f);
     TEXT_Y = (float)DEFAULT_MONITOR.maxResolution.height/2.0f + (((float)rows * (float)TEXT_HEIGHT)/2.0f) - ((float)row * (float)TEXT_HEIGHT);
     position_mutex.unlock();
 }
+
 
 void log(std::string message) {
     std::ofstream myfile;
