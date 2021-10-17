@@ -20,6 +20,7 @@
 #include "main.h"
 #include "libraries/tinythread.h"
 #include "libraries/json.hpp"
+#include "libraries/base64.h"
 
 using std::map;
 using asio::ip::tcp;
@@ -29,8 +30,9 @@ using namespace std;
 GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b);
 void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonitors);
 string read_(tcp::socket & socket);
-list<wstring> getTextFromCommand(vector<string> text_list);
+list<wstring> getTextFromCommand(json command);
 list<string> split(string str, char del);
+vector<string> splitVector(string strToSplit, char delimeter);
 void monitor_callback(GLFWmonitor* monitor, int event);
 void setupMonitor();
 void glSetup();
@@ -49,7 +51,7 @@ GLuint TEXT_WIDTH;
 GLuint TEXT_HEIGHT;
 GLuint PADDING;
 GLfloat TEXT_SCALE;
-std::list<std::wstring> TEXT;
+list<wstring> TEXT;
 int FONT_SIZE;
 Monitor *CHOICE_MONITORS;
 char* FONT;
@@ -58,7 +60,7 @@ tthread::mutex monitor_event_mutex;
 bool monitor_event = false;
 tthread::mutex text_mutex;
 tthread::mutex position_mutex;
-std::map<wchar_t, Character> Characters;
+map<wchar_t, Character> Characters;
 GLuint buffer;
 bool rewriteLogFile = true;
 
@@ -99,7 +101,7 @@ int main(int argc, char *argv[]) {
 
     setupMonitor();
 
-    std::list<int> width_list;
+    list<int> width_list;
 	while (!glfwWindowShouldClose(WINDOW)) {
         monitor_event_mutex.lock();
         if (monitor_event) {
@@ -110,12 +112,12 @@ int main(int argc, char *argv[]) {
         text_mutex.lock();
         GLfloat scale = TEXT_SCALE;
         GLuint globalHeight = 0;
-        std::list<std::wstring>::iterator t;
+        list<wstring>::iterator t;
         width_list.clear();
         for (t = TEXT.begin(); t != TEXT.end(); ++t) {
             TEXT_WIDTH = 0;
             TEXT_HEIGHT = 0;
-            std::wstring::iterator c;
+            wstring::iterator c;
             for (c = (*t).begin(); c != (*t).end(); c++) {
                 Character ch = Characters[*c];
                 switch(*c) {
@@ -153,14 +155,14 @@ int main(int argc, char *argv[]) {
         TEXT_HEIGHT = globalHeight + PADDING;
         glClear(GL_COLOR_BUFFER_BIT);
         for (t = TEXT.begin(); t != TEXT.end(); ++t) {
-            std::list<int>::iterator it = width_list.begin();
+            list<int>::iterator it = width_list.begin();
             advance(it, row-1);
             TEXT_WIDTH = *it;
             centerText(TEXT.size(), row);
             row++;
             x = TEXT_X;
             y = TEXT_Y;
-            std::wstring::iterator c;
+            wstring::iterator c;
             for (c = (*t).begin(); c != (*t).end(); c++) {
                 Character ch = Characters[*c];
                 switch(*c) {
@@ -226,20 +228,19 @@ void listen_for_connection(void* aArg) {
             for (;;)
             {
                 // JSON command
-                std::string message = read_(socket);
+                string message = read_(socket);
                 json command = json::parse(message);
                 // get the text to be shown
                 try {
-                    std::vector<std::string> text_list = command["text"].get<std::vector<std::string>>();
-                    std::list<std::wstring> result = getTextFromCommand(text_list);
+                    list<wstring> result = getTextFromCommand(command);
                     text_mutex.lock();
                     TEXT.clear();
-                    for (std::wstring s: result) {
+                    for (wstring s: result) {
                         TEXT.push_back(s);
                     }
                     text_mutex.unlock();
-                } catch (std::exception& e) {
-                    std::cout << e.what() << std::endl;
+                } catch (exception& e) {
+                    cout << e.what() << endl;
                 }
                 // get the text size
                 try {
@@ -247,13 +248,13 @@ void listen_for_connection(void* aArg) {
                     text_mutex.lock();
                     FONT_SIZE = font_size;
                     text_mutex.unlock();
-                } catch (std::exception& e) {
+                } catch (exception& e) {
                     //ignore
                 }
                 //get the font
                 try {
-                    std::string font = command["font"].get<std::string>();
-                    std::ifstream ifile;
+                    string font = command["font"].get<string>();
+                    ifstream ifile;
                     ifile.open("./fonts/" + font);
                     if (ifile) { // only change font if the font exists
                         text_mutex.lock();
@@ -265,7 +266,7 @@ void listen_for_connection(void* aArg) {
                         glSetup();
                         text_mutex.unlock();
                     }
-                } catch (std::exception& e) {
+                } catch (exception& e) {
                     //ignore
                 }
                 try {
@@ -274,62 +275,73 @@ void listen_for_connection(void* aArg) {
                     if (monitor < nr_of_monitors && monitor >= 0) {
                         DEFAULT_MONITOR = CHOICE_MONITORS[monitor];
                     }
-                } catch (std::exception& e) {
+                } catch (exception& e) {
                     //ignore
                 }
             }
-        } catch (std::exception& e) {
-            std::cout << e.what() << std::endl;
+        } catch (exception& e) {
+            cout << e.what() << endl;
         }
     }
 }
 
 
-std::list<std::wstring> getTextFromCommand(std::vector<std::string> text_list) {
-    std::list<std::wstring> results;
-    std::list<std::string> texts(text_list.begin(), text_list.end());
-    for (std::string t: texts) {
-        std::wstring result = L"";
+list<wstring> getTextFromCommand(json command) {
+    string base64String = command["text"].get<string>();
+    string result64 = base64_decode(base64String, false);
+    vector<string> text_list = splitVector(result64, '\n');
+    list<wstring> results;
+    for (string t: text_list) {
+        wstring result = L"";
         for(int i=0; i<t.length(); i++) {
-            if ((unsigned int) t[i] == 92) {
-                std::string character = t.substr(i+1, 5);
-                i = i+5;
-                if (character == "u00e2") {
-                    result += L"â";
-                } else if (character == "u00c2") {
-                    result += L"Â";
-                } else if (character == "u0103") {
-                    result += L"ă";
-                } else if (character == "u0102") {
-                    result += L"Ă";
-                } else if (character == "u021b") {
-                    result += L"ț";
-                } else if (character == "u021a") {
-                    result += L"Ț";
-                } else if (character == "u0219") {
-                    result += L"ș";
-                } else if (character == "u0218") {
-                    result += L"Ș";
-                } else if (character == "u00ce") {
-                    result += L"Î";
-                } else if (character == "u00ee") {
-                    result += L"î";
-                } else if (character == "u00d6") {
-                    result += L"Ö";
-                } else if (character == "u00f6") {
-                    result += L"ö";
-                } else if (character == "u00c4") {
-                    result += L"Ä";
-                } else if (character == "u00e4") {
-                    result += L"ä";
-                } else if (character == "u00dc") {
-                    result += L"Ü";
-                } else if (character == "u00fc") {
-                    result += L"ü";
-                } else {
-                    i = i-5;
-                    result += t[i];
-                }
+            if((unsigned int)t[i] == 4294967236 && (unsigned int) t[i+1] == 4294967171) {
+                result += L"ă";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967214) {
+                result += L"î";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967202) {
+                result += L"â";
+                i++;
+            } else if((unsigned int)t[i] == 4294967240 && (unsigned int) t[i+1] == 4294967193) {
+                result += L"ș";
+                i++;
+            } else if((unsigned int)t[i] == 4294967240 && (unsigned int) t[i+1] == 4294967195) {
+                result += L"ț";
+                i++;
+            } else if((unsigned int)t[i] == 4294967240 && (unsigned int) t[i+1] == 4294967194) {
+                result += L"Ț";
+                i++;
+            } else if((unsigned int)t[i] == 4294967240 && (unsigned int) t[i+1] == 4294967192) {
+                result += L"Ș";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967170) {
+                result += L"Â";
+                i++;
+            } else if((unsigned int)t[i] == 4294967236 && (unsigned int) t[i+1] == 4294967170) {
+                result += L"Ă";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967182) {
+                result += L"Î";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967190) {
+                result += L"Ö";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967222) {
+                result += L"ö";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967172) {
+                result += L"Ä";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967204) {
+                result += L"ä";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967196) {
+                result += L"Ü";
+                i++;
+            } else if((unsigned int)t[i] == 4294967235 && (unsigned int) t[i+1] == 4294967228) {
+                result += L"ü";
+                i++;
             } else {
                 result += t[i];
             }
@@ -339,11 +351,21 @@ std::list<std::wstring> getTextFromCommand(std::vector<std::string> text_list) {
     return results;
 }
 
+vector<string> splitVector(string strToSplit, char delimeter) {
+    stringstream ss(strToSplit);
+    string item;
+    vector<string> splittedStrings;
+    while (getline(ss, item, delimeter))
+    {
+       splittedStrings.push_back(item);
+    }
+    return splittedStrings;
+}
 
-std::list<std::string> split(std::string str, char del) {
-    std::list<std::string> results;
+list<string> split(string str, char del) {
+    list<string> results;
     // declaring temp string to store the curr "word" upto del
-      std::string temp = "";
+      string temp = "";
 
       for(int i=0; i<(int)str.size(); i++){
         // If cur char is not del, then append it to the cur "word", otherwise
@@ -352,12 +374,12 @@ std::list<std::string> split(std::string str, char del) {
             temp += str[i];
         } else {
             bool blank = false;
-            if (temp.empty() || std::all_of(temp.begin(), temp.end(), [](char c){return std::isspace(c);})) {
+            if (temp.empty() || all_of(temp.begin(), temp.end(), [](char c){return isspace(c);})) {
                   blank = true;
             }
-            std::string temp2 = temp;
+            string temp2 = temp;
             temp2.erase(remove(temp2.begin(), temp2.end(), ','), temp2.end());
-            if (temp2.empty() || std::all_of(temp2.begin(), temp2.end(), [](char c){return std::isspace(c);})) {
+            if (temp2.empty() || all_of(temp2.begin(), temp2.end(), [](char c){return isspace(c);})) {
                   blank = true;
             }
             if (!blank) {
@@ -370,18 +392,18 @@ std::list<std::string> split(std::string str, char del) {
 }
 
 
-std::string read_(tcp::socket & socket) {
+string read_(tcp::socket & socket) {
     asio::streambuf buf;
     asio::read_until( socket, buf, "\n" );
     auto data = asio::buffer_cast<const char*>(buf.data());
-    std::string s(reinterpret_cast<char const*>(data));
-    std::string result = "";
+    string s(reinterpret_cast<char const*>(data));
+    string result = "";
     return s;
 }
 
 
-void send_(tcp::socket & socket, const std::string& message) {
-    const std::string msg = message + "\n";
+void send_(tcp::socket & socket, const string& message) {
+    const string msg = message + "\n";
     asio::write( socket, asio::buffer(message) );
 }
 
@@ -739,7 +761,7 @@ void glSetup() {
             glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
             face->glyph->advance.x
 		};
-		Characters.insert(std::pair<wchar_t, Character>((wchar_t) c, character));
+		Characters.insert(pair<wchar_t, Character>((wchar_t) c, character));
 	}
 
 	FT_Done_Face(face);
@@ -772,13 +794,13 @@ void centerText(int rows, int row) {
 }
 
 
-void log(std::string message) {
-    std::ofstream myfile;
+void log(string message) {
+    ofstream myfile;
 	if (rewriteLogFile) {
         myfile.open("debug.log");
         rewriteLogFile = false;
 	} else {
-        myfile.open("debug.log", std::ios_base::app);
+        myfile.open("debug.log", ios_base::app);
 	}
 
 	myfile << message << "\n";
