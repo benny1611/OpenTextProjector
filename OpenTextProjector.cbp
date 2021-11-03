@@ -64,6 +64,8 @@
 			<Add library="libraries/freetype.lib" />
 			<Add library="ws2_32" />
 		</Linker>
+		<Unit filename="libraries/base64.cpp" />
+		<Unit filename="libraries/base64.h" />
 		<Unit filename="libraries/fast_mutex.h" />
 		<Unit filename="libraries/json.hpp" />
 		<Unit filename="libraries/tinythread.cpp" />

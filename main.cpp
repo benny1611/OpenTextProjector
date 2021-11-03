@@ -28,7 +28,7 @@ using json = nlohmann::json;
 using namespace std;
 
 GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b);
-void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonitors);
+void getMonitors(GLFWmonitor** monitors, Monitor* choiceMonitors);
 string read_(tcp::socket & socket);
 list<wstring> getTextFromCommand(json command);
 list<string> split(string str, char del);
@@ -55,6 +55,9 @@ list<wstring> TEXT;
 int FONT_SIZE;
 Monitor *CHOICE_MONITORS;
 char* FONT;
+int TOTAL_MONITORS;
+bool SHOULD_CHANGE_MONITOR = false;
+int MONITOR_TO_CHANGE;
 GLFWwindow* WINDOW;
 tthread::mutex monitor_event_mutex;
 bool monitor_event = false;
@@ -75,12 +78,11 @@ int main(int argc, char *argv[]) {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
     // Look for available monitors
-    int totalMonitor;
-    GLFWmonitor** monitors = glfwGetMonitors(&totalMonitor);
-    Monitor choiceMonitors[totalMonitor] = {};
-    getMonitors(monitors, totalMonitor, choiceMonitors);
+    GLFWmonitor** monitors = glfwGetMonitors(&TOTAL_MONITORS);
+    Monitor choiceMonitors[TOTAL_MONITORS] = {};
+    getMonitors(monitors, choiceMonitors);
 
-    for (int i=0; i<totalMonitor; i++) {
+    for (int i=0; i<TOTAL_MONITORS; i++) {
         printf("\nMonitor %d found. Name: %s; Resolution: %d X %d\n", i, choiceMonitors[i].name, choiceMonitors[i].maxResolution.height, choiceMonitors[i].maxResolution.width);
     }
 
@@ -106,6 +108,11 @@ int main(int argc, char *argv[]) {
         monitor_event_mutex.lock();
         if (monitor_event) {
             monitor_event = false;
+        }
+        if (SHOULD_CHANGE_MONITOR) {
+            SHOULD_CHANGE_MONITOR = false;
+            DEFAULT_MONITOR = CHOICE_MONITORS[MONITOR_TO_CHANGE];
+            glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, DEFAULT_MONITOR.refreshRate);
         }
         monitor_event_mutex.unlock();
 
@@ -229,6 +236,7 @@ void listen_for_connection(void* aArg) {
             {
                 // JSON command
                 string message = read_(socket);
+                cout << "This is your message: " << message << endl;
                 json command = json::parse(message);
                 // get the text to be shown
                 try {
@@ -240,7 +248,7 @@ void listen_for_connection(void* aArg) {
                     }
                     text_mutex.unlock();
                 } catch (exception& e) {
-                    cout << e.what() << endl;
+                    cout << "Error while trying to get the text: " << e.what() << endl;
                 }
                 // get the text size
                 try {
@@ -249,7 +257,7 @@ void listen_for_connection(void* aArg) {
                     FONT_SIZE = font_size;
                     text_mutex.unlock();
                 } catch (exception& e) {
-                    //ignore
+                    cout << "Error while trying to get the font size: " << e.what() << endl;
                 }
                 //get the font
                 try {
@@ -267,20 +275,26 @@ void listen_for_connection(void* aArg) {
                         text_mutex.unlock();
                     }
                 } catch (exception& e) {
-                    //ignore
+                    cout << "Error while trying to get the font: " << e.what() << endl;
                 }
                 try {
+                    cout << "Getting monitor ..." << endl;
                     int monitor = command["monitor"].get<int>();
-                    int nr_of_monitors = (sizeof CHOICE_MONITORS / sizeof CHOICE_MONITORS[0]);
-                    if (monitor < nr_of_monitors && monitor >= 0) {
-                        DEFAULT_MONITOR = CHOICE_MONITORS[monitor];
+                    cout << "Got the monitor: " << monitor << endl;
+                    if (monitor < TOTAL_MONITORS && monitor >= 0) {
+                        cout << "Changing the monitor ..." << endl;
+                        monitor_event_mutex.lock();
+                        SHOULD_CHANGE_MONITOR = true;
+                        MONITOR_TO_CHANGE = monitor;
+                        monitor_event_mutex.unlock();
+                        cout << "Released the locks" << endl;
                     }
                 } catch (exception& e) {
-                    //ignore
+                    cout << "Error while trying to get the monitor: " << e.what() << endl;
                 }
             }
         } catch (exception& e) {
-            cout << e.what() << endl;
+            cout << "Another exception has occurred: " << e.what() << endl;
         }
     }
 }
@@ -408,11 +422,11 @@ void send_(tcp::socket & socket, const string& message) {
 }
 
 
-void getMonitors(GLFWmonitor** monitors, int totalMonitor, Monitor* choiceMonitors) {
+void getMonitors(GLFWmonitor** monitors, Monitor* choiceMonitors) {
     printf("\nDetecting monitors ...\n\n");
     map<GLFWmonitor*, GLFWvidmode> monitorsModeMap;
 
-    for(int currMonitor=0;currMonitor<totalMonitor;currMonitor++)
+    for(int currMonitor=0;currMonitor<TOTAL_MONITORS;currMonitor++)
     {
         int count;
         const GLFWvidmode* modes = glfwGetVideoModes(monitors[currMonitor], &count);
@@ -673,10 +687,9 @@ GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b) {
 void monitor_callback(GLFWmonitor* monitor, int event) {
     monitor_event_mutex.lock();
     if (event == GLFW_DISCONNECTED || event == GLFW_CONNECTED) {
-        int totalMonitor;
-        GLFWmonitor** monitors = glfwGetMonitors(&totalMonitor);
-        Monitor choiceMonitors[totalMonitor] = {};
-        getMonitors(monitors, totalMonitor, choiceMonitors);
+        GLFWmonitor** monitors = glfwGetMonitors(&TOTAL_MONITORS);
+        Monitor choiceMonitors[TOTAL_MONITORS] = {};
+        getMonitors(monitors, choiceMonitors);
         CHOICE_MONITORS = choiceMonitors;
         DEFAULT_MONITOR = CHOICE_MONITORS[0];
         glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, DEFAULT_MONITOR.refreshRate);
