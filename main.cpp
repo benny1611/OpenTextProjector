@@ -38,6 +38,7 @@ void setupMonitor();
 void glSetup();
 void centerText(int rows, int row);
 void listen_for_connection(void* aArg);
+void initializeFreeType();
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,GLenum severity, GLsizei length,const GLchar* msg, const void* data) {
 	printf("%d: %s, severity: %d\n",id, msg, severity);
 }
@@ -90,12 +91,13 @@ int main(int argc, char *argv[]) {
 
     CHOICE_MONITORS = choiceMonitors;
     DEFAULT_MONITOR = CHOICE_MONITORS[0];
+    MONITOR_TO_CHANGE = 0;
     TEXT_SCALE = 1.0f;
     TEXT.push_back(L"HELLO WORLD! number 1");
     TEXT.push_back(L"HELLO WORLD! x2");
     TEXT_WIDTH = 0;
     TEXT_HEIGHT = 0;
-    FONT_SIZE = 30;
+    FONT_SIZE = 50;
     FONT = "./fonts/Raleway-Regular.ttf";
     PADDING = 5;
 
@@ -117,7 +119,6 @@ int main(int argc, char *argv[]) {
         monitor_event_mutex.unlock();
 
         text_mutex.lock();
-        GLfloat scale = TEXT_SCALE;
         GLuint globalHeight = 0;
         list<wstring>::iterator t;
         width_list.clear();
@@ -141,8 +142,8 @@ int main(int argc, char *argv[]) {
                         ch = Characters[354];
                         break;
                 }
-                GLfloat w = ch.Size.x * scale;
-                GLfloat h = ch.Size.y * scale;
+                GLfloat w = ch.Size.x * TEXT_SCALE;
+                GLfloat h = ch.Size.y * TEXT_SCALE;
 
                 TEXT_WIDTH += w;
                 if (h > TEXT_HEIGHT) {
@@ -186,11 +187,11 @@ int main(int argc, char *argv[]) {
                         ch = Characters[354];
                         break;
                 }
-                GLfloat w = ch.Size.x * scale;
-                GLfloat h = ch.Size.y * scale;
+                GLfloat w = ch.Size.x * TEXT_SCALE;
+                GLfloat h = ch.Size.y * TEXT_SCALE;
 
-                GLfloat xpos = x + ch.Bearing.x * scale;
-                GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
+                GLfloat xpos = x + ch.Bearing.x * TEXT_SCALE;
+                GLfloat ypos = y - (ch.Size.y - ch.Bearing.y) * TEXT_SCALE;
 
 
                 // Update VBO for each character
@@ -207,7 +208,7 @@ int main(int argc, char *argv[]) {
                 glNamedBufferSubData(buffer, 0, sizeof(GLfloat)*6*4, vertices);
                 glBindTexture(GL_TEXTURE_2D, ch.TextureID);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
-                x += (ch.Advance >> 6) * scale;
+                x += (ch.Advance >> 6) * TEXT_SCALE;
             }
             text_mutex.unlock();
         }
@@ -236,7 +237,6 @@ void listen_for_connection(void* aArg) {
             {
                 // JSON command
                 string message = read_(socket);
-                cout << "This is your message: " << message << endl;
                 json command = json::parse(message);
                 // get the text to be shown
                 try {
@@ -254,40 +254,44 @@ void listen_for_connection(void* aArg) {
                 try {
                     int font_size = command["font_size"].get<int>();
                     text_mutex.lock();
-                    FONT_SIZE = font_size;
+                    TEXT_SCALE = ((float)font_size) / ((float)FONT_SIZE);
                     text_mutex.unlock();
                 } catch (exception& e) {
                     cout << "Error while trying to get the font size: " << e.what() << endl;
                 }
                 //get the font
                 try {
+                    cout << "Getting the font ..." << endl;
                     string font = command["font"].get<string>();
+                    cout << "Got the font: " << font << endl;
                     ifstream ifile;
-                    ifile.open("./fonts/" + font);
+                    ifile.open("./fonts/" + font + ".ttf");
+                    cout << "Checking if the font file exists ..." << endl;
                     if (ifile) { // only change font if the font exists
+                        cout << "Found the font file :)" << endl;
                         text_mutex.lock();
                         ifile.close();
+                        font = "./fonts/" + font + ".ttf";
+                        cout << "Got the mutex" << endl;
                         char c[font.size() + 1];
                         font.copy(c, font.size() + 1);
                         c[font.size()] = '\0';
+                        cout << "Setting the font and executing GL Setup" << endl;
                         FONT = c;
-                        glSetup();
+                        initializeFreeType();
+                        cout << "Done!" << endl;
                         text_mutex.unlock();
                     }
                 } catch (exception& e) {
                     cout << "Error while trying to get the font: " << e.what() << endl;
                 }
                 try {
-                    cout << "Getting monitor ..." << endl;
                     int monitor = command["monitor"].get<int>();
-                    cout << "Got the monitor: " << monitor << endl;
-                    if (monitor < TOTAL_MONITORS && monitor >= 0) {
-                        cout << "Changing the monitor ..." << endl;
+                    if (monitor < TOTAL_MONITORS && monitor >= 0 && monitor != MONITOR_TO_CHANGE) {
                         monitor_event_mutex.lock();
                         SHOULD_CHANGE_MONITOR = true;
                         MONITOR_TO_CHANGE = monitor;
                         monitor_event_mutex.unlock();
-                        cout << "Released the locks" << endl;
                     }
                 } catch (exception& e) {
                     cout << "Error while trying to get the monitor: " << e.what() << endl;
@@ -692,6 +696,7 @@ void monitor_callback(GLFWmonitor* monitor, int event) {
         getMonitors(monitors, choiceMonitors);
         CHOICE_MONITORS = choiceMonitors;
         DEFAULT_MONITOR = CHOICE_MONITORS[0];
+        MONITOR_TO_CHANGE = 0;
         glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, DEFAULT_MONITOR.refreshRate);
         monitor_event = true;
     }
@@ -724,61 +729,8 @@ void glSetup() {
     glViewport(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height);
     GLuint shader = CompileShaders(true, false, false, false, true);
 	glUseProgram(shader);
-	int error;
 
-	FT_Library ft;
-	error = FT_Init_FreeType(&ft);
-
-	if (error) {
-        printf("Error while trying to initialize library: %d\n", error);
-	}
-
-	FT_Face face;
-	error = FT_New_Face(ft, FONT, 0, &face);
-
-	if ( error == FT_Err_Unknown_File_Format ) {
-      printf("Error: File format not supported\n");
-      exit(1);
-    }
-    else if ( error ) {
-      printf("Error while trying to initialize face: %d\n", error);
-    }
-
-	FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
-
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	if(!Characters.empty()) {
-        Characters.clear();
-	}
-
-	for (GLuint c = 0; c < 512; c++) {
-        FT_Load_Char(face, (wchar_t)c, FT_LOAD_RENDER);
-
-		GLuint texture;
-		glCreateTextures(GL_TEXTURE_2D,1, &texture);
-
-		glTextureStorage2D(texture, 1, GL_R8, face->glyph->bitmap.width, face->glyph->bitmap.rows);
-		glTextureSubImage2D(texture, 0, 0, 0, face->glyph->bitmap.width, face->glyph->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, face->glyph->bitmap.buffer);
-
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		Character character = {
-            texture,
-            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            face->glyph->advance.x
-		};
-		Characters.insert(pair<wchar_t, Character>((wchar_t) c, character));
-	}
-
-	FT_Done_Face(face);
-	FT_Done_FreeType(ft);
+	initializeFreeType();
 
 	glm::mat4 projection = glm::ortho(0.0f, (float)DEFAULT_MONITOR.maxResolution.width, 0.0f, (float)DEFAULT_MONITOR.maxResolution.height);
 	glUniformMatrix4fv(1, 1, GL_FALSE, glm::value_ptr(projection));
@@ -796,6 +748,80 @@ void glSetup() {
 	glEnableVertexArrayAttrib(vao, 0);
 
 	glUniform3f(6, 0.88f, 0.59f, 0.07f);
+}
+
+
+void initializeFreeType() {
+    cout << "Initializing FreeType ..." << endl;
+	int error;
+
+	FT_Library ft;
+	error = FT_Init_FreeType(&ft);
+	cout << "Checking for errors ..." << endl;
+
+	if (error) {
+        printf("Error while trying to initialize freetype library: %d\n", error);
+	}
+
+	FT_Face face;
+	error = FT_New_Face(ft, FONT, 0, &face);
+
+	if ( error == FT_Err_Unknown_File_Format ) {
+      printf("Error: File format not supported\n");
+      exit(1);
+    }
+    else if ( error ) {
+      printf("Error while trying to initialize face: %d\n", error);
+    }
+    cout << "Done setting the font " << endl;
+	FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+	if(!Characters.empty()) {
+        cout << "Clearing the Characters" << endl;
+        Characters.clear();
+	}
+
+	for (GLuint c = 0; c < 512; c++) {
+        FT_Load_Char(face, (wchar_t)c, FT_LOAD_RENDER);
+
+		GLuint texture = 0;
+		cout << "Creating textures..." << endl;
+		glCreateTextures(GL_TEXTURE_2D,1, &texture);
+		cout << "Done creating textures" << endl;
+
+		cout << "Storage 2D" << endl;
+		glTextureStorage2D(texture, 1, GL_R8, face->glyph->bitmap.width, face->glyph->bitmap.rows);
+		cout << "Done Storage 2D" << endl;
+		glTextureSubImage2D(texture, 0, 0, 0, face->glyph->bitmap.width, face->glyph->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, face->glyph->bitmap.buffer);
+		cout << "Done SubImage 2D" << endl;
+
+		cout << "The rest ..." << endl;
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		cout << "Done with the rest :)" << endl;
+
+		Character character = {
+            texture,
+            glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+            glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+            face->glyph->advance.x
+		};
+		cout << "Adding character ..." << endl;
+		Characters.insert(pair<wchar_t, Character>((wchar_t) c, character));
+		cout << "Done adding character" << endl;
+	}
+	cout << "Done inserting the Characters :)" << endl;
+
+	FT_Done_Face(face);
+	cout << "Done face" << endl;
+	FT_Done_FreeType(ft);
+	cout << "Done freetype" << endl;
 }
 
 
