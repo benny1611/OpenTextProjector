@@ -58,6 +58,7 @@ Monitor *CHOICE_MONITORS;
 char* FONT;
 int TOTAL_MONITORS;
 bool SHOULD_CHANGE_MONITOR = false;
+bool SHOULD_CHANGE_FONT = false;
 int MONITOR_TO_CHANGE;
 GLFWwindow* WINDOW;
 tthread::mutex monitor_event_mutex;
@@ -90,7 +91,7 @@ int main(int argc, char *argv[]) {
     glfwSetMonitorCallback(monitor_callback);
 
     CHOICE_MONITORS = choiceMonitors;
-    DEFAULT_MONITOR = CHOICE_MONITORS[0];
+    DEFAULT_MONITOR = CHOICE_MONITORS[1];
     MONITOR_TO_CHANGE = 0;
     TEXT_SCALE = 1.0f;
     TEXT.push_back(L"HELLO WORLD! number 1");
@@ -98,7 +99,7 @@ int main(int argc, char *argv[]) {
     TEXT_WIDTH = 0;
     TEXT_HEIGHT = 0;
     FONT_SIZE = 50;
-    FONT = "./fonts/Raleway-Regular.ttf";
+    FONT = "./fonts/raleway.ttf";
     PADDING = 5;
 
     printf("Done!\n");
@@ -117,6 +118,13 @@ int main(int argc, char *argv[]) {
             glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, DEFAULT_MONITOR.refreshRate);
         }
         monitor_event_mutex.unlock();
+
+        text_mutex.lock();
+        if(SHOULD_CHANGE_FONT) {
+            SHOULD_CHANGE_FONT = false;
+            initializeFreeType();
+        }
+        text_mutex.unlock();
 
         text_mutex.lock();
         GLuint globalHeight = 0;
@@ -238,6 +246,24 @@ void listen_for_connection(void* aArg) {
                 // JSON command
                 string message = read_(socket);
                 json command = json::parse(message);
+                //get the font
+                try {
+                    string font = command["font"].get<string>();
+                    ifstream ifile;
+                    ifile.open("./fonts/" + font + ".ttf");
+                    if (ifile) { // only change font if the font exists
+                        text_mutex.lock();
+                        ifile.close();
+                        font = "./fonts/" + font + ".ttf";
+                        if (string(FONT) != font) {
+                            FONT = strcpy((char*)malloc(font.length()+1), font.c_str());
+                            SHOULD_CHANGE_FONT = true;
+                        }
+                        text_mutex.unlock();
+                    }
+                } catch (exception& e) {
+                    cout << "Error while trying to get the font: " << e.what() << endl;
+                }
                 // get the text to be shown
                 try {
                     list<wstring> result = getTextFromCommand(command);
@@ -258,32 +284,6 @@ void listen_for_connection(void* aArg) {
                     text_mutex.unlock();
                 } catch (exception& e) {
                     cout << "Error while trying to get the font size: " << e.what() << endl;
-                }
-                //get the font
-                try {
-                    cout << "Getting the font ..." << endl;
-                    string font = command["font"].get<string>();
-                    cout << "Got the font: " << font << endl;
-                    ifstream ifile;
-                    ifile.open("./fonts/" + font + ".ttf");
-                    cout << "Checking if the font file exists ..." << endl;
-                    if (ifile) { // only change font if the font exists
-                        cout << "Found the font file :)" << endl;
-                        text_mutex.lock();
-                        ifile.close();
-                        font = "./fonts/" + font + ".ttf";
-                        cout << "Got the mutex" << endl;
-                        char c[font.size() + 1];
-                        font.copy(c, font.size() + 1);
-                        c[font.size()] = '\0';
-                        cout << "Setting the font and executing GL Setup" << endl;
-                        FONT = c;
-                        initializeFreeType();
-                        cout << "Done!" << endl;
-                        text_mutex.unlock();
-                    }
-                } catch (exception& e) {
-                    cout << "Error while trying to get the font: " << e.what() << endl;
                 }
                 try {
                     int monitor = command["monitor"].get<int>();
@@ -752,12 +752,10 @@ void glSetup() {
 
 
 void initializeFreeType() {
-    cout << "Initializing FreeType ..." << endl;
 	int error;
 
 	FT_Library ft;
 	error = FT_Init_FreeType(&ft);
-	cout << "Checking for errors ..." << endl;
 
 	if (error) {
         printf("Error while trying to initialize freetype library: %d\n", error);
@@ -773,13 +771,11 @@ void initializeFreeType() {
     else if ( error ) {
       printf("Error while trying to initialize face: %d\n", error);
     }
-    cout << "Done setting the font " << endl;
 	FT_Set_Pixel_Sizes(face, 0, FONT_SIZE);
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	if(!Characters.empty()) {
-        cout << "Clearing the Characters" << endl;
         Characters.clear();
 	}
 
@@ -787,24 +783,17 @@ void initializeFreeType() {
         FT_Load_Char(face, (wchar_t)c, FT_LOAD_RENDER);
 
 		GLuint texture = 0;
-		cout << "Creating textures..." << endl;
 		glCreateTextures(GL_TEXTURE_2D,1, &texture);
-		cout << "Done creating textures" << endl;
 
-		cout << "Storage 2D" << endl;
 		glTextureStorage2D(texture, 1, GL_R8, face->glyph->bitmap.width, face->glyph->bitmap.rows);
-		cout << "Done Storage 2D" << endl;
 		glTextureSubImage2D(texture, 0, 0, 0, face->glyph->bitmap.width, face->glyph->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, face->glyph->bitmap.buffer);
-		cout << "Done SubImage 2D" << endl;
 
-		cout << "The rest ..." << endl;
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
-		cout << "Done with the rest :)" << endl;
 
 		Character character = {
             texture,
@@ -812,16 +801,11 @@ void initializeFreeType() {
             glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
             face->glyph->advance.x
 		};
-		cout << "Adding character ..." << endl;
 		Characters.insert(pair<wchar_t, Character>((wchar_t) c, character));
-		cout << "Done adding character" << endl;
 	}
-	cout << "Done inserting the Characters :)" << endl;
 
 	FT_Done_Face(face);
-	cout << "Done face" << endl;
 	FT_Done_FreeType(ft);
-	cout << "Done freetype" << endl;
 }
 
 
