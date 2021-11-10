@@ -1,12 +1,12 @@
 # OpenTextProjector
 
 - [Design goals](#design-goals)
-- Platforms
-- Installation and Contribution
-- Documentation
-- Example
-- Used third-party tools/libraries
-- License
+- [Platforms](#platforms)
+- [Installation and Contribution](#installantion-and-contribution)
+- [Documentation](#documentation)
+- [Example](#example)
+- [Used third-party tools/libraries](#used-third-party-tools/libraries)
+- [License](#license)
 
 ## Design goals
 
@@ -23,6 +23,8 @@ Currently OpenTextProjector only works on Windows (tested on Windows 10), but ot
 ## Installation and Contribution
 
 To install this project you need to download the release and double click on the .exe file. If it doesn't work you may need to change the graphics card under which the program is run. For example if you hava an NVIDIA graphics card, you need to go to the NVIDIA control panel and under ```3D Settings``` select ```Manage 3D settings```, then switch to the ```Program Settings``` tab and click on add and select the executable ```OpenTextProjector.exe```. After that select your NVIDIA graphics processor as your preferred graphics processor.
+
+Any contribution is welcome. I've made this project as easy to build as it can get, you only have to open the project in Code::Blocks (if it doesn't work try to change the graphics card as explained above).
 
 ## Documentation
 
