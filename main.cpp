@@ -59,6 +59,10 @@ char* FONT;
 int TOTAL_MONITORS;
 bool SHOULD_CHANGE_MONITOR = false;
 bool SHOULD_CHANGE_FONT = false;
+bool SHOULD_CHANGE_FONT_COLOR = false;
+float RED = 1.0;
+float GREEN = 1.0;
+float BLUE = 1.0;
 int MONITOR_TO_CHANGE;
 GLFWwindow* WINDOW;
 tthread::mutex monitor_event_mutex;
@@ -94,8 +98,9 @@ int main(int argc, char *argv[]) {
     DEFAULT_MONITOR = CHOICE_MONITORS[1];
     MONITOR_TO_CHANGE = 0;
     TEXT_SCALE = 1.0f;
-    TEXT.push_back(L"HELLO WORLD! number 1");
-    TEXT.push_back(L"HELLO WORLD! x2");
+    TEXT.push_back(L"WELCOME TO");
+    TEXT.push_back(L"OpenTextProjector");
+    TEXT.push_back(L"Made with love by benny1611");
     TEXT_WIDTH = 0;
     TEXT_HEIGHT = 0;
     FONT_SIZE = 50;
@@ -124,9 +129,10 @@ int main(int argc, char *argv[]) {
             SHOULD_CHANGE_FONT = false;
             initializeFreeType();
         }
-        text_mutex.unlock();
-
-        text_mutex.lock();
+        if(SHOULD_CHANGE_FONT_COLOR) {
+            SHOULD_CHANGE_FONT_COLOR = false;
+            glUniform3f(6, RED, GREEN, BLUE);
+        }
         GLuint globalHeight = 0;
         list<wstring>::iterator t;
         width_list.clear();
@@ -264,6 +270,29 @@ void listen_for_connection(void* aArg) {
                 } catch (exception& e) {
                     cout << "Error while trying to get the font: " << e.what() << endl;
                 }
+                // get the font color
+                try {
+                    vector<float> color = command["font_color"].get<vector<float>>();
+                    if (color.size() != 3) {
+                        goto skipColor;
+                    }
+                    float r, g, b;
+                    r = color[0];
+                    g = color[1];
+                    b = color[2];
+                    if (r == RED && g == GREEN && b == BLUE) {
+                        goto skipColor;
+                    }
+                    text_mutex.lock();
+                    RED = r;
+                    GREEN = g;
+                    BLUE = b;
+                    SHOULD_CHANGE_FONT_COLOR = true;
+                    text_mutex.unlock();
+                } catch(exception& e) {
+                    cout << "Error while trying to get the font color: " << e.what() << endl;
+                }
+                skipColor:
                 // get the text to be shown
                 try {
                     list<wstring> result = getTextFromCommand(command);
@@ -661,7 +690,6 @@ GLuint CompileShaders(bool vs_b, bool tcs_b, bool tes_b, bool gs_b, bool fs_b) {
 			printf(error);
 			free(error);
 		}
-
 		glAttachShader(shader_programme, fs);
 		free(fragment_shader);
 	}
@@ -730,6 +758,7 @@ void glSetup() {
     GLuint shader = CompileShaders(true, false, false, false, true);
 	glUseProgram(shader);
 
+
 	initializeFreeType();
 
 	glm::mat4 projection = glm::ortho(0.0f, (float)DEFAULT_MONITOR.maxResolution.width, 0.0f, (float)DEFAULT_MONITOR.maxResolution.height);
@@ -746,8 +775,8 @@ void glSetup() {
 	glVertexArrayAttribFormat(vao, 0, 4, GL_FLOAT, GL_FALSE, 0);
 	glVertexArrayAttribBinding(vao, 0, 0);
 	glEnableVertexArrayAttrib(vao, 0);
-
-	glUniform3f(6, 0.88f, 0.59f, 0.07f);
+	// Set the text color to white
+	glUniform3f(6, RED, GREEN, BLUE);
 }
 
 
