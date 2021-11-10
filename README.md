@@ -1,0 +1,70 @@
+# OpenTextProjector
+
+- [Design goals](#design-goals)
+- Platforms
+- Installation and Contribution
+- Documentation
+- Example
+- Used third-party tools/libraries
+- License
+
+## Design goals
+
+There are lots of programs to project text on screen out there, but none offered the possibility to control the monitor remotely (at least none that I could find). This program lets you show text on the screen of a computer via TCP-Socket. The program gets a JSON obect with information about the text, and the monitor and it just shows the desired text on the desired monitor. I had this project idea for church, when I had to show verses and lyrics while doing a live streaming. This project gives you the posibility to share the work with someone else as they can change the lyrics/verses via phone. 
+
+**ATTENTION**: This project is only the backend, meaning it has no user interface, it just shows the text on the screen. We are currently working on a web intreface for this project. 
+
+The goal of this project is to have a program that can show text on screen and be able to take commands from a TCP socket, also it is desired to have a RTSP/RTMP server to stream the text for a streaming software (like OBS).
+
+## Platforms
+
+Currently OpenTextProjector only works on Windows (tested on Windows 10), but other plytforms are on the way (specifically MacOS and Linux).
+
+## Installation and Contribution
+
+To install this project you need to download the release and double click on the .exe file. If it doesn't work you may need to change the graphics card under which the program is run. For example if you hava an NVIDIA graphics card, you need to go to the NVIDIA control panel and under ```3D Settings``` select ```Manage 3D settings```, then switch to the ```Program Settings``` tab and click on add and select the executable ```OpenTextProjector.exe```. After that select your NVIDIA graphics processor as your preferred graphics processor.
+
+## Documentation
+
+This program listens for a TCP Socket connection on port 8080, and takes a JSON object with the commands. 
+
+Here are all the possible commands:
+
+- ```text``` - ```string``` text that should be shown on the screen encoded with ```base64```, empty text for blank screen.
+- ```monitor``` - ```int``` the index of the monitor, starting with 0 (1 for secondary monitor, 2 for the third and so on).
+- ```font_size``` - ```int``` size in pixels of the font.
+- ```font``` - ```string``` name of the ```.ttf``` file that must be present in the ```fonts``` folder.
+- ```font_color``` - ```int array``` of size 3, with the first element representing the color RED (between 0.0 and 1.0), the second element representing the color GREEN (between 0.0 and 1.0), the third representing BLUE (between 0.0 and 1.0). You can use a combination of those to achieve your desired color (RGB).
+
+Any command can be left out completly. If one command is missing, the previously command will be taken (for example if ```font_color``` is missing, the last color that has been set will be set)
+
+## Example
+
+Here's a JSON object example:
+
+```
+{
+  "text": "SGVsbG8gV29ybGQ=",
+  "monitor": 0,
+  "font_size": 35,
+  "font": "JandaAppleCobbler",
+  "font_color": [
+    1,
+    0,
+    0
+  ]
+}
+```
+
+## Used third-party tools/libraries
+
+- [freetype](https://freetype.org/)
+- [json](https://github.com/nlohmann/json)
+- [tinythread](https://sourceforge.net/projects/tinythread/)
+- [cpp-base64](https://github.com/ReneNyffenegger/cpp-base64)
+- [glew](https://github.com/nigels-com/glew)
+- [glfw](https://www.glfw.org/)
+
+## License
+
+See the ```LICENSE``` file
