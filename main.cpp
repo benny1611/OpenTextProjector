@@ -21,6 +21,7 @@
 #include "libraries/tinythread.h"
 #include "libraries/json.hpp"
 #include "libraries/base64.h"
+#include "libraries/FreeImage.h"
 
 using std::map;
 using asio::ip::tcp;
@@ -38,12 +39,18 @@ void setupMonitor();
 void glSetup();
 void centerText(int rows, int row);
 void listen_for_connection(void* aArg);
+void rtspScreenShotToPipe(void * aArg);
 void initializeFreeType();
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,GLenum severity, GLsizei length,const GLchar* msg, const void* data) {
 	printf("%d: %s, severity: %d\n",id, msg, severity);
 }
-
 void log(string message);
+void SetDefaultIO(FreeImageIO *io);
+unsigned DLL_CALLCONV _ReadProc(void *buffer, unsigned size, unsigned count, fi_handle handle);
+unsigned DLL_CALLCONV _WriteProc(void *buffer, unsigned size, unsigned count, fi_handle handle);
+int DLL_CALLCONV _SeekProc(fi_handle handle, long offset, int origin);
+long DLL_CALLCONV _TellProc(fi_handle handle);
+
 
 Monitor DEFAULT_MONITOR;
 GLfloat TEXT_X;
@@ -60,6 +67,8 @@ int TOTAL_MONITORS;
 bool SHOULD_CHANGE_MONITOR = false;
 bool SHOULD_CHANGE_FONT = false;
 bool SHOULD_CHANGE_FONT_COLOR = false;
+bool RTSP_SERVER_STARTED = false;
+bool RTSP_SERVER_SHOULD_START = false;
 float RED = 1.0;
 float GREEN = 1.0;
 float BLUE = 1.0;
@@ -69,10 +78,14 @@ tthread::mutex monitor_event_mutex;
 bool monitor_event = false;
 tthread::mutex text_mutex;
 tthread::mutex position_mutex;
+tthread::mutex rtsp_server_mutex;
+tthread::mutex screenshot_mutex;
 map<wchar_t, Character> Characters;
 GLuint buffer;
 bool rewriteLogFile = true;
-
+tthread::thread* rtsp;
+FILE *pPipe;
+bool send_screenshot = false;
 
 int main(int argc, char *argv[]) {
     tthread::thread t(listen_for_connection, 0);
@@ -110,7 +123,6 @@ int main(int argc, char *argv[]) {
     printf("Done!\n");
 
     setupMonitor();
-
     list<int> width_list;
 	while (!glfwWindowShouldClose(WINDOW)) {
         monitor_event_mutex.lock();
@@ -123,6 +135,19 @@ int main(int argc, char *argv[]) {
             glfwSetWindowMonitor(WINDOW, DEFAULT_MONITOR.monitor, 0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, DEFAULT_MONITOR.refreshRate);
         }
         monitor_event_mutex.unlock();
+
+        rtsp_server_mutex.lock();
+        if (RTSP_SERVER_SHOULD_START) {
+            RTSP_SERVER_SHOULD_START = false;
+            rtsp = new tthread::thread(rtspScreenShotToPipe, 0);
+            if( (pPipe = _popen( "ffmpeg -re -f image2pipe -vcodec mjpeg -i - -vcodec h264 -r 100 -f mpegts udp://127.0.0.1:1234?pkt_size=1316", "wb")) == NULL ) {
+                cerr << "Error: Could not open ffmpeg" << endl;
+                _pclose(pPipe);
+                exit(1);
+            }
+        }
+        rtsp_server_mutex.unlock();
+
 
         text_mutex.lock();
         if(SHOULD_CHANGE_FONT) {
@@ -228,11 +253,63 @@ int main(int argc, char *argv[]) {
         }
         glfwSwapBuffers(WINDOW);
         glfwPollEvents();
+
+        // Screenshot:
+        screenshot_mutex.lock();
+        if(send_screenshot) {
+            send_screenshot = false;
+            // Make the BYTE array, factor of 3 because it's RBG.
+            BYTE* pixels = new BYTE[3 * DEFAULT_MONITOR.maxResolution.width * DEFAULT_MONITOR.maxResolution.height];
+
+            glReadPixels(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+            // Convert to FreeImage format & save to file
+            FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 3 * DEFAULT_MONITOR.maxResolution.width, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
+
+            FreeImageIO io;
+            SetDefaultIO(&io);
+
+            bool success = FreeImage_SaveToHandle(FIF_JPEG, image, &io, (fi_handle)pPipe);
+            fflush(pPipe);
+            if(success) {
+                cout << "Successfully sent screenshot :)" << endl;
+            }
+
+            // Free resources
+            FreeImage_Unload(image);
+            delete [] pixels;
+        }
+        screenshot_mutex.unlock();
     }
 	printf("%d", glGetError());
 
     glfwTerminate();
     return 0;
+}
+
+
+
+void SetDefaultIO(FreeImageIO *io) {
+	io->read_proc  = _ReadProc;
+	io->seek_proc  = _SeekProc;
+	io->tell_proc  = _TellProc;
+	io->write_proc = _WriteProc;
+}
+
+unsigned DLL_CALLCONV _ReadProc(void *buffer, unsigned size, unsigned count, fi_handle handle) {
+	return (unsigned)fread(buffer, size, count, (FILE *)handle);
+}
+
+unsigned DLL_CALLCONV _WriteProc(void *buffer, unsigned size, unsigned count, fi_handle handle) {
+	return (unsigned)fwrite(buffer, size, count, (FILE *)handle);
+}
+
+int DLL_CALLCONV _SeekProc(fi_handle handle, long offset, int origin) {
+	return fseek((FILE *)handle, offset, origin);
+}
+
+long DLL_CALLCONV _TellProc(fi_handle handle) {
+	return ftell((FILE *)handle);
 }
 
 
@@ -258,7 +335,7 @@ void listen_for_connection(void* aArg) {
                     ifstream ifile;
                     ifile.open("./fonts/" + font + ".ttf");
                     if (ifile) { // only change font if the font exists
-                        text_mutex.lock();
+                        text_mutex.try_lock();
                         ifile.close();
                         font = "./fonts/" + font + ".ttf";
                         if (string(FONT) != font) {
@@ -268,7 +345,7 @@ void listen_for_connection(void* aArg) {
                         text_mutex.unlock();
                     }
                 } catch (exception& e) {
-                    cout << "Error while trying to get the font: " << e.what() << endl;
+                    cerr << "Error while trying to get the font: " << e.what() << endl;
                 }
                 // get the font color
                 try {
@@ -283,53 +360,90 @@ void listen_for_connection(void* aArg) {
                     if (r == RED && g == GREEN && b == BLUE) {
                         goto skipColor;
                     }
-                    text_mutex.lock();
+                    text_mutex.try_lock();
                     RED = r;
                     GREEN = g;
                     BLUE = b;
                     SHOULD_CHANGE_FONT_COLOR = true;
                     text_mutex.unlock();
                 } catch(exception& e) {
-                    cout << "Error while trying to get the font color: " << e.what() << endl;
+                    cerr << "Error while trying to get the font color: " << e.what() << endl;
                 }
                 skipColor:
                 // get the text to be shown
                 try {
                     list<wstring> result = getTextFromCommand(command);
-                    text_mutex.lock();
+                    text_mutex.try_lock();
                     TEXT.clear();
                     for (wstring s: result) {
                         TEXT.push_back(s);
                     }
                     text_mutex.unlock();
                 } catch (exception& e) {
-                    cout << "Error while trying to get the text: " << e.what() << endl;
+                    cerr << "Error while trying to get the text: " << e.what() << endl;
                 }
                 // get the text size
                 try {
                     int font_size = command["font_size"].get<int>();
-                    text_mutex.lock();
+                    text_mutex.try_lock();
                     TEXT_SCALE = ((float)font_size) / ((float)FONT_SIZE);
                     text_mutex.unlock();
                 } catch (exception& e) {
-                    cout << "Error while trying to get the font size: " << e.what() << endl;
+                    cerr << "Error while trying to get the font size: " << e.what() << endl;
                 }
                 try {
                     int monitor = command["monitor"].get<int>();
                     if (monitor < TOTAL_MONITORS && monitor >= 0 && monitor != MONITOR_TO_CHANGE) {
-                        monitor_event_mutex.lock();
+                        monitor_event_mutex.try_lock();
                         SHOULD_CHANGE_MONITOR = true;
                         MONITOR_TO_CHANGE = monitor;
                         monitor_event_mutex.unlock();
                     }
                 } catch (exception& e) {
-                    cout << "Error while trying to get the monitor: " << e.what() << endl;
+                    cerr << "Error while trying to get the monitor: " << e.what() << endl;
+                }
+                try {
+                    string server = command["server"].get<string>();
+                    rtsp_server_mutex.try_lock();
+                    if (server == "start" && !RTSP_SERVER_STARTED) {
+                        RTSP_SERVER_STARTED = true;
+                        RTSP_SERVER_SHOULD_START = true;
+                    } else if (server == "stop" && RTSP_SERVER_STARTED) {
+                        RTSP_SERVER_STARTED = false;
+                        rtsp_server_mutex.unlock();
+                        rtsp->join();
+                        delete rtsp;
+                        _pclose(pPipe);
+                        delete pPipe;
+                    } else {
+                        cerr << "Error: unknown command for server" << endl;
+                    }
+                    rtsp_server_mutex.unlock();
+                } catch (exception& e) {
+                    cerr << "Error while trying to get the server command: " << e.what() << endl;
                 }
             }
         } catch (exception& e) {
-            cout << "Another exception has occurred: " << e.what() << endl;
+            cerr << "Another exception has occurred: " << e.what() << endl;
         }
     }
+}
+
+
+void rtspScreenShotToPipe(void * aArg) {
+    while(true) {
+        rtsp_server_mutex.try_lock();
+        if(!RTSP_SERVER_STARTED) {
+            cout << "Breaking free now XD" << endl;
+            break;
+        }
+        rtsp_server_mutex.unlock();
+        tthread::this_thread::sleep_for(tthread::chrono::milliseconds(100));
+        screenshot_mutex.try_lock();
+        send_screenshot = true;
+        screenshot_mutex.unlock();
+    }
+    cout << "Done with this thread XD" << endl;
 }
 
 

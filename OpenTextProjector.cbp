@@ -63,6 +63,7 @@
 			<Add library="libraries/glew32.lib" />
 			<Add library="libraries/freetype.lib" />
 			<Add library="ws2_32" />
+			<Add library="libraries/FreeImage.lib" />
 		</Linker>
 		<Unit filename="libraries/base64.cpp" />
 		<Unit filename="libraries/base64.h" />
