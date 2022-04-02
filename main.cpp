@@ -466,7 +466,6 @@ void startServer(void * aArg) {
     // test program - not this test program - as a model.
 
     const unsigned char ttl = 255;
-
     const Port rtpPort(rtpPortNum);
     const Port rtcpPort(rtcpPortNum);
 

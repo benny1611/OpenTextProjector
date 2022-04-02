@@ -56,17 +56,20 @@
 			<Add library="libraries/libglfw3.a" />
 			<Add library="libraries/libglfw3dll.a" />
 			<Add library="libraries/libopengl32.a" />
-			<Add library="libraries/libfreetype.a" />
-			<Add library="libraries/libws2_32.a" />
-			<Add library="ws2_32" />
 			<Add library="libraries/libglew32.a" />
 			<Add library="libraries/libglew32.dll.a" />
+			<Add library="libraries/libswscale.dll.a" />
+			<Add library="libraries/libavutil.dll.a" />
+			<Add library="libraries/libavcodec.dll.a" />
+			<Add library="libraries/libfreetype.dll.a" />
+			<Add library="libraries/libfreetype.a" />
 			<Add library="libraries/libliveMedia.a" />
 			<Add library="libraries/libgroupsock.a" />
 			<Add library="libraries/libBasicUsageEnvironment.a" />
 			<Add library="libraries/libUsageEnvironment.a" />
-			<Add library="libraries/libavcodec.dll.a" />
-			<Add library="libraries/libavutil.dll.a" />
+			<Add library="ws2_32" />
+			<Add library="ssl" />
+			<Add library="crypto" />
 		</Linker>
 		<Unit filename="ScreenSource.cpp" />
 		<Unit filename="ScreenSource.hh" />
