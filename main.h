@@ -1,6 +1,13 @@
 #ifndef MAIN_H_INCLUDED
 #define MAIN_H_INCLUDED
 
+#include <GL/glew.h>
+#define GLFW_DLL
+#include<GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/ext.hpp>
+
 struct Resolution {
     int width;
     int height;

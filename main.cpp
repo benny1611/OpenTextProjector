@@ -21,7 +21,11 @@
 #include "libraries/tinythread.h"
 #include "libraries/json.hpp"
 #include "libraries/base64.h"
-#include "libraries/FreeImage.h"
+#include "ScreenSource.hh"
+#include <liveMedia.hh>
+#include <BasicUsageEnvironment.hh>
+#include <GroupsockHelper.hh>
+
 
 using std::map;
 using asio::ip::tcp;
@@ -39,17 +43,15 @@ void setupMonitor();
 void glSetup();
 void centerText(int rows, int row);
 void listen_for_connection(void* aArg);
-void rtspScreenShotToPipe(void * aArg);
+void rtspScreenShot(void * aArg);
+void play();
+void afterPlaying(void*);
+void startServer(void * aArg);
 void initializeFreeType();
 void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,GLenum severity, GLsizei length,const GLchar* msg, const void* data) {
 	printf("%d: %s, severity: %d\n",id, msg, severity);
 }
 void log(string message);
-void SetDefaultIO(FreeImageIO *io);
-unsigned DLL_CALLCONV _ReadProc(void *buffer, unsigned size, unsigned count, fi_handle handle);
-unsigned DLL_CALLCONV _WriteProc(void *buffer, unsigned size, unsigned count, fi_handle handle);
-int DLL_CALLCONV _SeekProc(fi_handle handle, long offset, int origin);
-long DLL_CALLCONV _TellProc(fi_handle handle);
 
 
 Monitor DEFAULT_MONITOR;
@@ -86,8 +88,18 @@ bool rewriteLogFile = true;
 tthread::thread* rtsp;
 FILE *pPipe;
 bool send_screenshot = false;
+UsageEnvironment* env;
+H264VideoStreamDiscreteFramer* videoSource;
+RTPSink* videoSink;
+ScreenSource* screenSrc;
+char volatile* watchVariable = 0;
+bool readyToSetFrame = false;
+RTSPServer* rtspServer;
+
+
 
 int main(int argc, char *argv[]) {
+    // GLFW stuff
     tthread::thread t(listen_for_connection, 0);
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -139,19 +151,17 @@ int main(int argc, char *argv[]) {
         rtsp_server_mutex.lock();
         if (RTSP_SERVER_SHOULD_START) {
             RTSP_SERVER_SHOULD_START = false;
-            rtsp = new tthread::thread(rtspScreenShotToPipe, 0);
-            if( (pPipe = _popen( "ffmpeg -re -f image2pipe -vcodec mjpeg -i - -vcodec h264 -r 100 -f mpegts udp://127.0.0.1:1234?pkt_size=1316", "wb")) == NULL ) {
-                cerr << "Error: Could not open ffmpeg" << endl;
-                _pclose(pPipe);
-                exit(1);
-            }
+            tthread::thread serverScreenShots(rtspScreenShot, 0);
+            tthread::thread startRTSPServer(startServer, 0);
+            serverScreenShots.detach();
+            startRTSPServer.detach();
         }
         rtsp_server_mutex.unlock();
 
 
         text_mutex.lock();
         if(SHOULD_CHANGE_FONT) {
-            SHOULD_CHANGE_FONT = false;
+            SHOULD_CHANGE_FONT =  false;
             initializeFreeType();
         }
         if(SHOULD_CHANGE_FONT_COLOR) {
@@ -255,28 +265,25 @@ int main(int argc, char *argv[]) {
         glfwPollEvents();
 
         // Screenshot:
-        screenshot_mutex.lock();
-        if(send_screenshot) {
+        screenshot_mutex.try_lock();
+        if(send_screenshot && readyToSetFrame) {
+            //cout << "setting screenshot to false" << endl;
             send_screenshot = false;
             // Make the BYTE array, factor of 3 because it's RBG.
             BYTE* pixels = new BYTE[3 * DEFAULT_MONITOR.maxResolution.width * DEFAULT_MONITOR.maxResolution.height];
 
             glReadPixels(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-
+            screenSrc->setNextFrame(pixels, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height);
             // Convert to FreeImage format & save to file
-            FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 3 * DEFAULT_MONITOR.maxResolution.width, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
+            /*FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 3 * DEFAULT_MONITOR.maxResolution.width, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
 
             FreeImageIO io;
-            SetDefaultIO(&io);
+            ImageIOUtils::SetDefaultIO(&io);
 
-            bool success = FreeImage_SaveToHandle(FIF_JPEG, image, &io, (fi_handle)pPipe);
-            fflush(pPipe);
-            if(success) {
-                cout << "Successfully sent screenshot :)" << endl;
-            }
+            screenSrc->setFrame(image);
 
             // Free resources
-            FreeImage_Unload(image);
+            FreeImage_Unload(image);*/
             delete [] pixels;
         }
         screenshot_mutex.unlock();
@@ -286,32 +293,6 @@ int main(int argc, char *argv[]) {
     glfwTerminate();
     return 0;
 }
-
-
-
-void SetDefaultIO(FreeImageIO *io) {
-	io->read_proc  = _ReadProc;
-	io->seek_proc  = _SeekProc;
-	io->tell_proc  = _TellProc;
-	io->write_proc = _WriteProc;
-}
-
-unsigned DLL_CALLCONV _ReadProc(void *buffer, unsigned size, unsigned count, fi_handle handle) {
-	return (unsigned)fread(buffer, size, count, (FILE *)handle);
-}
-
-unsigned DLL_CALLCONV _WriteProc(void *buffer, unsigned size, unsigned count, fi_handle handle) {
-	return (unsigned)fwrite(buffer, size, count, (FILE *)handle);
-}
-
-int DLL_CALLCONV _SeekProc(fi_handle handle, long offset, int origin) {
-	return fseek((FILE *)handle, offset, origin);
-}
-
-long DLL_CALLCONV _TellProc(fi_handle handle) {
-	return ftell((FILE *)handle);
-}
-
 
 void listen_for_connection(void* aArg) {
     while (true) {
@@ -326,6 +307,7 @@ void listen_for_connection(void* aArg) {
 
             for (;;)
             {
+                screenshot_mutex.try_lock();
                 // JSON command
                 string message = read_(socket);
                 json command = json::parse(message);
@@ -404,24 +386,24 @@ void listen_for_connection(void* aArg) {
                 }
                 try {
                     string server = command["server"].get<string>();
-                    rtsp_server_mutex.try_lock();
+                    rtsp_server_mutex.lock();
                     if (server == "start" && !RTSP_SERVER_STARTED) {
+                        cout << "Starting the server..." << endl;
                         RTSP_SERVER_STARTED = true;
                         RTSP_SERVER_SHOULD_START = true;
                     } else if (server == "stop" && RTSP_SERVER_STARTED) {
+                        cout << "Closing server ..." << endl;
                         RTSP_SERVER_STARTED = false;
+                        watchVariable = (char*)1;
                         rtsp_server_mutex.unlock();
-                        rtsp->join();
-                        delete rtsp;
-                        _pclose(pPipe);
-                        delete pPipe;
                     } else {
-                        cerr << "Error: unknown command for server" << endl;
+                        cerr << "Error: command \"" << server << "\" not valid. Is server currently running: " << RTSP_SERVER_STARTED << endl;
                     }
                     rtsp_server_mutex.unlock();
                 } catch (exception& e) {
                     cerr << "Error while trying to get the server command: " << e.what() << endl;
                 }
+                screenshot_mutex.unlock();
             }
         } catch (exception& e) {
             cerr << "Another exception has occurred: " << e.what() << endl;
@@ -430,22 +412,111 @@ void listen_for_connection(void* aArg) {
 }
 
 
-void rtspScreenShotToPipe(void * aArg) {
+void rtspScreenShot(void * aArg) {
     while(true) {
         rtsp_server_mutex.try_lock();
         if(!RTSP_SERVER_STARTED) {
             cout << "Breaking free now XD" << endl;
+            rtsp_server_mutex.unlock();
             break;
         }
         rtsp_server_mutex.unlock();
         tthread::this_thread::sleep_for(tthread::chrono::milliseconds(100));
-        screenshot_mutex.try_lock();
+        screenshot_mutex.lock();
+        //cout << "setting screenshot to true" << endl;
         send_screenshot = true;
         screenshot_mutex.unlock();
     }
     cout << "Done with this thread XD" << endl;
 }
 
+void play() {
+    FramedSource* videoES = screenSrc;
+    videoSource = H264VideoStreamDiscreteFramer::createNew(*env, videoES, False);
+    *env << "Started streaming...\n";
+    videoSink->startPlaying(*videoSource, afterPlaying, videoSink);
+    cout << "Started playing! :)" << endl;
+}
+
+void afterPlaying(void*) {
+    cout << "Playing again" << endl;
+    play();
+}
+
+void startServer(void * aArg) {
+    watchVariable = 0;
+    const unsigned estimatedSessionBandwidth = 1024;
+    const unsigned maxCNAMElen = 100;
+    unsigned char CNAME[maxCNAMElen+1];
+    char volatile* watchVariable = 0;
+    const unsigned short rtpPortNum = 18888;
+    const unsigned short rtcpPortNum = rtpPortNum + 1;
+
+    // Live555 stuff
+    // Begin by setting up the usage environment
+    TaskScheduler* scheduler = BasicTaskScheduler::createNew();
+    env = BasicUsageEnvironment::createNew(*scheduler);
+
+    // Create 'groupsocks' for RTP and RTCP:
+    struct sockaddr_storage destinationAddress;
+    destinationAddress.ss_family = AF_INET;
+    ((struct sockaddr_in&)destinationAddress).sin_addr.s_addr = chooseRandomIPv4SSMAddress(*env);
+    // Note: This is a multicast address.  If you wish instead to stream
+    // using unicast, then you should use the "testOnDemandRTSPServer"
+    // test program - not this test program - as a model.
+
+    const unsigned char ttl = 255;
+
+    const Port rtpPort(rtpPortNum);
+    const Port rtcpPort(rtcpPortNum);
+
+    Groupsock rtpGroupsock(*env, destinationAddress, rtpPort, ttl);
+    rtpGroupsock.multicastSendOnly(); // we're a SSM source
+    Groupsock rtcpGroupsock(*env, destinationAddress, rtcpPort, ttl);
+    rtcpGroupsock.multicastSendOnly(); // we're a SSM source
+
+    OutPacketBuffer::maxSize = 1000000;
+    videoSink = H264VideoRTPSink::createNew(*env, &rtpGroupsock, 96);
+    gethostname((char*)CNAME, maxCNAMElen);
+    CNAME[maxCNAMElen] = '\0';
+    screenSrc = ScreenSource::createNew(*env);
+    if (screenSrc == NULL) {
+        *env << "Unable to create a screen source";
+        exit(1);
+    }
+    readyToSetFrame = true;
+    RTCPInstance* rtcp
+    = RTCPInstance::createNew(*env, &rtcpGroupsock,
+                estimatedSessionBandwidth, CNAME,
+                videoSink, NULL /* we're a server */,
+                True /* we're a SSM source */);
+    // Note: This starts RTCP running automatically
+    rtspServer = RTSPServer::createNew(*env, 554);
+    if (rtspServer == NULL) {
+    *env << "Failed to create RTSP server: " << env->getResultMsg() << "\n";
+    exit(1);
+    }
+    ServerMediaSession* sms
+    = ServerMediaSession::createNew(*env, "ipcamera","UPP Buffer" ,
+           "Session streamed by \"testH264VideoStreamer\"",
+                       True /*SSM*/);
+    sms->addSubsession(PassiveServerMediaSubsession::createNew(*videoSink, rtcp));
+    rtspServer->addServerMediaSession(sms);
+    char* url = rtspServer->rtspURL(sms);
+    *env << "Play this stream using the URL \"" << url << "\"\n";
+    delete[] url;
+
+    // Start the streaming:
+    *env << "Beginning streaming...\n";
+    play();
+    if (rtspServer->setUpTunnelingOverHTTP(80) || rtspServer->setUpTunnelingOverHTTP(8000) || rtspServer->setUpTunnelingOverHTTP(8080)) {
+        *env << "\n(We use port " << rtspServer->httpServerPortNum() << " for optional RTSP-over-HTTP tunneling.)\n";
+    } else {
+        *env << "\n(RTSP-over-HTTP tunneling is not available.)\n";
+    }
+    env->taskScheduler().doEventLoop(watchVariable); // does not return
+    cout << "Terminated the server thread";
+}
 
 list<wstring> getTextFromCommand(json command) {
     string base64String = command["text"].get<string>();
@@ -865,7 +936,7 @@ void setupMonitor() {
 
 void glSetup() {
     glewInit();
-    glDebugMessageCallback(GLDebugMessageCallback, NULL);
+    //glDebugMessageCallback(GLDebugMessageCallback, NULL);
     glEnable(GL_CULL_FACE);
 	glEnable(GL_DEBUG_OUTPUT);
     glViewport(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height);
