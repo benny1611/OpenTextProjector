@@ -2,3 +2,15 @@ bin/
 obj/
 *.depend
 *.layout
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/
+cmake-build-debug-mingw-64bit/
+.ninja_deps
+.ninja_log
+build.ninja
+cmake-build-debug/
+.cmake/
+.idea/
+Testing/
+OpenTextProjector.exe

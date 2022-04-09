@@ -22,7 +22,7 @@ along with this library; if not, write to the Free Software Foundation, Inc.,
 // Implementation
 
 #include "ScreenSource.hh"
-#include <GroupsockHelper.hh> // for "gettimeofday()"
+#include <groupsock/GroupsockHelper.hh> // for "gettimeofday()"
 #include <iostream>
 
 #ifdef __cplusplus
@@ -219,9 +219,11 @@ void ScreenSource::setNextFrame(BYTE* screenshot, int width, int height) {
         std::cout << "Setting frame width and height and starting the encoder" << std::endl;
         ffmpeg_encoder_start(AV_CODEC_ID_H264, 100, width, height);
     }
+
     nextFramePixels = screenshot;
     frameWidth = width;
     frameHeight = height;
+    envir().taskScheduler().triggerEvent(eventTriggerId, this);
 }
 
 void ScreenSource::deliverFrame() {
@@ -296,5 +298,6 @@ void ScreenSource::deliverFrame() {
         std::cout << "Not ready yet sorry, no frames were set" << std::endl;
         return;
     }
+    std::cout << "Delivering..." << std::endl;
     ffmpeg_encoder_encode_frame(nextFramePixels, fTo);
 }

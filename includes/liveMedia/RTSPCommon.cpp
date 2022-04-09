@@ -354,7 +354,7 @@ Boolean RTSPOptionIsSupported(char const* commandName, char const* optionsRespon
 char const* dateHeader() {
   static char buf[200];
 #if !defined(_WIN32_WCE)
-  time_t tt = time(NULL);
+  time_t tt = time_t(NULL);
   strftime(buf, sizeof buf, "Date: %a, %b %d %Y %H:%M:%S GMT\r\n", gmtime(&tt));
 #else
   // WinCE apparently doesn't have "time()", "strftime()", or "gmtime()",

@@ -3,11 +3,11 @@
 
 #include <GL/glew.h>
 #define GLFW_DLL
-#include<GLFW/glfw3.h>
+#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/ext.hpp>
-#include <ft2build.h>
+#include <freetype/ft2build.h>
 #include FT_FREETYPE_H
 
 #include <stdlib.h>
@@ -16,14 +16,14 @@
 #include <map>
 #include <iterator>
 #include <fstream>
-#include <asio.hpp>
+#include <asio/asio.hpp>
 #include "main.h"
-#include "libraries/tinythread.h"
-#include "libraries/json.hpp"
-#include "libraries/base64.h"
+#include "tools/tinythread.h"
+#include "tools/json.hpp"
+#include "tools/base64.h"
 #include "ScreenSource.hh"
-#include <liveMedia.hh>
-#include <BasicUsageEnvironment.hh>
+#include <liveMedia/liveMedia.hh>
+#include <BasicUsageEnvironment/BasicUsageEnvironment.hh>
 #include <GroupsockHelper.hh>
 
 
@@ -455,7 +455,9 @@ void startServer(void * aArg) {
     // Live555 stuff
     // Begin by setting up the usage environment
     TaskScheduler* scheduler = BasicTaskScheduler::createNew();
+
     env = BasicUsageEnvironment::createNew(*scheduler);
+
 
     // Create 'groupsocks' for RTP and RTCP:
     struct sockaddr_storage destinationAddress;
@@ -492,15 +494,19 @@ void startServer(void * aArg) {
     // Note: This starts RTCP running automatically
     rtspServer = RTSPServer::createNew(*env, 554);
     if (rtspServer == NULL) {
-    *env << "Failed to create RTSP server: " << env->getResultMsg() << "\n";
-    exit(1);
+        *env << "Failed to create RTSP server: " << env->getResultMsg() << "\n";
+        exit(1);
     }
+
     ServerMediaSession* sms
     = ServerMediaSession::createNew(*env, "ipcamera","UPP Buffer" ,
            "Session streamed by \"testH264VideoStreamer\"",
                        True /*SSM*/);
     sms->addSubsession(PassiveServerMediaSubsession::createNew(*videoSink, rtcp));
+    cout << "Error incoming..." << endl;
     rtspServer->addServerMediaSession(sms);
+    cout << "You can't see me" << endl;
+
     char* url = rtspServer->rtspURL(sms);
     *env << "Play this stream using the URL \"" << url << "\"\n";
     delete[] url;

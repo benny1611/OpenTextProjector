@@ -25,7 +25,7 @@ along with this library; if not, write to the Free Software Foundation, Inc.,
 #define _DEVICE_SOURCE_HH
 
 #ifndef _FRAMED_SOURCE_HH
-#include "FramedSource.hh"
+#include "liveMedia/FramedSource.hh"
 #ifdef __cplusplus
 extern "C" {
 #endif
