@@ -53,8 +53,11 @@ static void ffmpeg_encoder_set_frame_yuv_from_rgb(uint8_t *rgb) {
             c->width, c->height, AV_PIX_FMT_RGB24,
             c->width, c->height, AV_PIX_FMT_YUV420P,
             0, 0, 0, 0);
-    sws_scale(sws_context, (const uint8_t * const *)&rgb, in_linesize, 0,
-            c->height, frame->data, frame->linesize);
+    const uint8_t* const src_data[] = { rgb };
+    std::cout << "Sws_scale output: "  << std::endl;
+    sws_scale(sws_context, src_data, in_linesize, 0,
+              c->height, frame->data, frame->linesize);
+    std::cout << "Done!" << std::endl;
 }
 
 /* Allocate resources and write header data to the output file. */
@@ -137,9 +140,13 @@ Must be called after ffmpeg_encoder_start, and ffmpeg_encoder_finish
 must be called after the last call to this function.
 */
 void ffmpeg_encoder_encode_frame(uint8_t *rgb, unsigned char* fTo) {
+    std::cout << "Here it comes ..." << std::endl;
     int got_output, error;
+    std::cout << "1" << std::endl;
     ffmpeg_encoder_set_frame_yuv_from_rgb(rgb);
+    std::cout << "2" << std::endl;
     av_init_packet(&pkt);
+    std::cout << "3" << std::endl;
     pkt.data = NULL;
     pkt.size = 0;
     if (frame->pts == 1) {
@@ -158,7 +165,9 @@ void ffmpeg_encoder_encode_frame(uint8_t *rgb, unsigned char* fTo) {
     if ( (error = avcodec_receive_packet(c, &pkt)) == 0) {
         got_output = 1;
     }
+    std::cout << "Got output? " << got_output << std::endl;
     if (got_output) {
+        std::cout << "Copying output..." << std::endl;
         memmove(fTo, pkt.data, pkt.size);
         av_packet_unref(&pkt);
     }
@@ -215,7 +224,8 @@ void ScreenSource::deliverFrame0(void* clientData) {
 }
 
 void ScreenSource::setNextFrame(BYTE* screenshot, int width, int height) {
-    if(frameWidth == 0 && frameHeight == 0) {
+    bool startEncoder = frameWidth == 0 && frameHeight == 0;
+    if(startEncoder) {
         std::cout << "Setting frame width and height and starting the encoder" << std::endl;
         ffmpeg_encoder_start(AV_CODEC_ID_H264, 100, width, height);
     }
@@ -223,73 +233,12 @@ void ScreenSource::setNextFrame(BYTE* screenshot, int width, int height) {
     nextFramePixels = screenshot;
     frameWidth = width;
     frameHeight = height;
-    envir().taskScheduler().triggerEvent(eventTriggerId, this);
+    if (startEncoder) {
+        envir().taskScheduler().triggerEvent(eventTriggerId, this);
+    }
 }
 
 void ScreenSource::deliverFrame() {
-    // This function is called when new frame data is available from the device.
-    // We deliver this data by copying it to the 'downstream' object, using the following parameters (class members):
-    // 'in' parameters (these should *not* be modified by this function):
-    //     fTo: The frame data is copied to this address.
-    //         (Note that the variable "fTo" is *not* modified.  Instead,
-    //          the frame data is copied to the address pointed to by "fTo".)
-    //     fMaxSize: This is the maximum number of bytes that can be copied
-    //         (If the actual frame is larger than this, then it should
-    //          be truncated, and "fNumTruncatedBytes" set accordingly.)
-    // 'out' parameters (these are modified by this function):
-    //     fFrameSize: Should be set to the delivered frame size (<= fMaxSize).
-    //     fNumTruncatedBytes: Should be set iff the delivered frame would have been
-    //         bigger than "fMaxSize", in which case it's set to the number of bytes
-    //         that have been omitted.
-    //     fPresentationTime: Should be set to the frame's presentation time
-    //         (seconds, microseconds).  This time must be aligned with 'wall-clock time' - i.e., the time that you would get
-    //         by calling "gettimeofday()".
-    //     fDurationInMicroseconds: Should be set to the frame's duration, if known.
-    //         If, however, the device is a 'live source' (e.g., encoded from a camera or microphone), then we probably don't need
-    //         to set this variable, because - in this case - data will never arrive 'early'.
-    // Note the code below.
-    /*std::cout << "Delivering frame ..." << std::endl;
-    if (!isCurrentlyAwaitingData()) {
-        std::cout << "Not ready yet sorry" << std::endl;
-        return; // we're not ready for the data yet
-    }
-    if (currentFrame == NULL) {
-        std::cout << "goto..." << std::endl;
-        goto label2;
-    }
-    label:{
-        std::cout << "1" << std::endl;
-        u_int8_t* newFrameDataStart = (u_int8_t*)currentFrame; //%%% TO BE WRITTEN %%%
-        std::cout << "2" << std::endl;
-        int height = (int)FreeImage_GetHeight(currentFrame);
-        std::cout << "3" << std::endl;
-        int width = (int)FreeImage_GetWidth(currentFrame);
-        std::cout << "Here is the height: " << height << " and here is the width: " << width << std::endl;
-        unsigned newFrameSize = height * width; //%%% TO BE WRITTEN %%%
-        std::cout << "Here is the new frame size: " << newFrameSize << " and here is the maxSize: " << fMaxSize << std::endl;
-
-        // Deliver the data here:
-        if (newFrameSize > fMaxSize)  {
-            fFrameSize = fMaxSize;
-            fNumTruncatedBytes = newFrameSize - fMaxSize;
-        } else {
-            fFrameSize = newFrameSize;
-        }
-
-        gettimeofday(&fPresentationTime, NULL); // If you have a more accurate time - e.g., from an encoder - then use that instead.
-        // If the device is *not* a 'live source' (e.g., it comes instead from a file or buffer), then set "fDurationInMicroseconds" here.
-        FreeImageIO io;
-        ImageIOUtils::SetDefaultIO(&io);
-        FreeImage_SaveToHandle(FIF_JPEG, currentFrame, &io, (fi_handle)fTo);
-        //memmove(fTo, newFrameDataStart, fFrameSize);
-        // unsigned char* fTo;
-
-        // After delivering the data, inform the reader that it is now available:
-        FramedSource::afterGetting(this);
-    }
-    label2:{
-        std::cout << "Nope..." << std::endl;
-    }*/
     if (!isCurrentlyAwaitingData()) {
         std::cout << "Not ready yet sorry" << std::endl;
         return; // we're not ready for the data yet
@@ -299,5 +248,7 @@ void ScreenSource::deliverFrame() {
         return;
     }
     std::cout << "Delivering..." << std::endl;
+    frameMutex.lock();
     ffmpeg_encoder_encode_frame(nextFramePixels, fTo);
+    frameMutex.unlock();
 }

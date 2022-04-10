@@ -26,6 +26,7 @@ along with this library; if not, write to the Free Software Foundation, Inc.,
 
 #ifndef _FRAMED_SOURCE_HH
 #include "liveMedia/FramedSource.hh"
+#include "tools/tinythread.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,6 +43,7 @@ public:
 
 public:
   static EventTriggerId eventTriggerId;
+  tthread::mutex frameMutex;
   // Note that this is defined here to be a static class variable, because this code is intended to illustrate how to
   // encapsulate a *single* device - not a set of devices.
   // You can, however, redefine this to be a non-static member variable.

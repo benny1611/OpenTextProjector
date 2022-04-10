@@ -10,8 +10,8 @@
 #include <freetype/ft2build.h>
 #include FT_FREETYPE_H
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 #include <iostream>
 #include <map>
 #include <iterator>
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
     glfwSetMonitorCallback(monitor_callback);
 
     CHOICE_MONITORS = choiceMonitors;
-    DEFAULT_MONITOR = CHOICE_MONITORS[1];
+    DEFAULT_MONITOR = CHOICE_MONITORS[0];
     MONITOR_TO_CHANGE = 0;
     TEXT_SCALE = 1.0f;
     TEXT.push_back(L"WELCOME TO");
@@ -265,15 +265,17 @@ int main(int argc, char *argv[]) {
         glfwPollEvents();
 
         // Screenshot:
-        screenshot_mutex.try_lock();
+        screenshot_mutex.lock();
         if(send_screenshot && readyToSetFrame) {
             //cout << "setting screenshot to false" << endl;
             send_screenshot = false;
+            screenSrc->frameMutex.lock();
             // Make the BYTE array, factor of 3 because it's RBG.
             BYTE* pixels = new BYTE[3 * DEFAULT_MONITOR.maxResolution.width * DEFAULT_MONITOR.maxResolution.height];
-
+            //glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glReadPixels(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
             screenSrc->setNextFrame(pixels, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height);
+            screenSrc->frameMutex.unlock();
             // Convert to FreeImage format & save to file
             /*FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 3 * DEFAULT_MONITOR.maxResolution.width, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
 
@@ -307,7 +309,7 @@ void listen_for_connection(void* aArg) {
 
             for (;;)
             {
-                screenshot_mutex.try_lock();
+                //screenshot_mutex.lock();
                 // JSON command
                 string message = read_(socket);
                 json command = json::parse(message);
@@ -317,7 +319,7 @@ void listen_for_connection(void* aArg) {
                     ifstream ifile;
                     ifile.open("./fonts/" + font + ".ttf");
                     if (ifile) { // only change font if the font exists
-                        text_mutex.try_lock();
+                        text_mutex.lock();
                         ifile.close();
                         font = "./fonts/" + font + ".ttf";
                         if (string(FONT) != font) {
@@ -342,7 +344,7 @@ void listen_for_connection(void* aArg) {
                     if (r == RED && g == GREEN && b == BLUE) {
                         goto skipColor;
                     }
-                    text_mutex.try_lock();
+                    text_mutex.lock();
                     RED = r;
                     GREEN = g;
                     BLUE = b;
@@ -355,7 +357,7 @@ void listen_for_connection(void* aArg) {
                 // get the text to be shown
                 try {
                     list<wstring> result = getTextFromCommand(command);
-                    text_mutex.try_lock();
+                    text_mutex.lock();
                     TEXT.clear();
                     for (wstring s: result) {
                         TEXT.push_back(s);
@@ -367,7 +369,7 @@ void listen_for_connection(void* aArg) {
                 // get the text size
                 try {
                     int font_size = command["font_size"].get<int>();
-                    text_mutex.try_lock();
+                    text_mutex.lock();
                     TEXT_SCALE = ((float)font_size) / ((float)FONT_SIZE);
                     text_mutex.unlock();
                 } catch (exception& e) {
@@ -376,7 +378,7 @@ void listen_for_connection(void* aArg) {
                 try {
                     int monitor = command["monitor"].get<int>();
                     if (monitor < TOTAL_MONITORS && monitor >= 0 && monitor != MONITOR_TO_CHANGE) {
-                        monitor_event_mutex.try_lock();
+                        monitor_event_mutex.lock();
                         SHOULD_CHANGE_MONITOR = true;
                         MONITOR_TO_CHANGE = monitor;
                         monitor_event_mutex.unlock();
@@ -403,7 +405,7 @@ void listen_for_connection(void* aArg) {
                 } catch (exception& e) {
                     cerr << "Error while trying to get the server command: " << e.what() << endl;
                 }
-                screenshot_mutex.unlock();
+                //screenshot_mutex.unlock();
             }
         } catch (exception& e) {
             cerr << "Another exception has occurred: " << e.what() << endl;
@@ -414,7 +416,7 @@ void listen_for_connection(void* aArg) {
 
 void rtspScreenShot(void * aArg) {
     while(true) {
-        rtsp_server_mutex.try_lock();
+        rtsp_server_mutex.lock();
         if(!RTSP_SERVER_STARTED) {
             cout << "Breaking free now XD" << endl;
             rtsp_server_mutex.unlock();
@@ -503,9 +505,7 @@ void startServer(void * aArg) {
            "Session streamed by \"testH264VideoStreamer\"",
                        True /*SSM*/);
     sms->addSubsession(PassiveServerMediaSubsession::createNew(*videoSink, rtcp));
-    cout << "Error incoming..." << endl;
     rtspServer->addServerMediaSession(sms);
-    cout << "You can't see me" << endl;
 
     char* url = rtspServer->rtspURL(sms);
     *env << "Play this stream using the URL \"" << url << "\"\n";
@@ -1018,7 +1018,7 @@ void initializeFreeType() {
             texture,
             glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
             glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            face->glyph->advance.x
+            static_cast<GLuint>(face->glyph->advance.x)
 		};
 		Characters.insert(pair<wchar_t, Character>((wchar_t) c, character));
 	}
