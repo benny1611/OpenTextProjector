@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
     glfwSetMonitorCallback(monitor_callback);
 
     CHOICE_MONITORS = choiceMonitors;
-    DEFAULT_MONITOR = CHOICE_MONITORS[0];
+    DEFAULT_MONITOR = CHOICE_MONITORS[1];
     MONITOR_TO_CHANGE = 0;
     TEXT_SCALE = 1.0f;
     TEXT.push_back(L"WELCOME TO");
@@ -269,13 +269,11 @@ int main(int argc, char *argv[]) {
         if(send_screenshot && readyToSetFrame) {
             //cout << "setting screenshot to false" << endl;
             send_screenshot = false;
-            screenSrc->frameMutex.lock();
             // Make the BYTE array, factor of 3 because it's RBG.
             BYTE* pixels = new BYTE[3 * DEFAULT_MONITOR.maxResolution.width * DEFAULT_MONITOR.maxResolution.height];
             //glPixelStorei(GL_PACK_ALIGNMENT, 1);
             glReadPixels(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
             screenSrc->setNextFrame(pixels, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height);
-            screenSrc->frameMutex.unlock();
             // Convert to FreeImage format & save to file
             /*FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 3 * DEFAULT_MONITOR.maxResolution.width, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
 
@@ -286,7 +284,7 @@ int main(int argc, char *argv[]) {
 
             // Free resources
             FreeImage_Unload(image);*/
-            delete [] pixels;
+            //delete [] pixels;
         }
         screenshot_mutex.unlock();
     }
@@ -433,8 +431,7 @@ void rtspScreenShot(void * aArg) {
 }
 
 void play() {
-    FramedSource* videoES = screenSrc;
-    videoSource = H264VideoStreamDiscreteFramer::createNew(*env, videoES, False);
+    videoSource = H264VideoStreamDiscreteFramer::createNew(*env, screenSrc, False);
     *env << "Started streaming...\n";
     videoSink->startPlaying(*videoSource, afterPlaying, videoSink);
     cout << "Started playing! :)" << endl;
@@ -482,8 +479,8 @@ void startServer(void * aArg) {
     videoSink = H264VideoRTPSink::createNew(*env, &rtpGroupsock, 96);
     gethostname((char*)CNAME, maxCNAMElen);
     CNAME[maxCNAMElen] = '\0';
-    screenSrc = ScreenSource::createNew(*env);
-    if (screenSrc == NULL) {
+    screenSrc = ScreenSource::createNew(*env, DEFAULT_MONITOR.maxResolution.height, DEFAULT_MONITOR.maxResolution.width, 10);
+    if (screenSrc == nullptr) {
         *env << "Unable to create a screen source";
         exit(1);
     }

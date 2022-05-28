@@ -38,28 +38,29 @@ extern "C" {
 
 class ScreenSource:  public FramedSource {
 public:
-  static ScreenSource* createNew(UsageEnvironment& env);
+  static ScreenSource* createNew(UsageEnvironment& env, int height, int width, int playTimePerFrame);
   void setNextFrame(BYTE* screenshot, int width, int height);
-
-public:
   static EventTriggerId eventTriggerId;
-  tthread::mutex frameMutex;
+  static tthread::mutex frameMutex;
+
   // Note that this is defined here to be a static class variable, because this code is intended to illustrate how to
   // encapsulate a *single* device - not a set of devices.
   // You can, however, redefine this to be a non-static member variable.
 
 protected:
-  ScreenSource(UsageEnvironment& env);
+  ScreenSource(UsageEnvironment& env, int height, int width, int playTimePerFrame);
   // called only by createNew(), or by subclass constructors
   virtual ~ScreenSource();
 
 private:
   // redefined virtual functions:
   virtual void doGetNextFrame();
-  AVCodecContext *c;
+  AVCodecContext *c{};
   int frameWidth = 0;
   int frameHeight = 0;
-  BYTE* nextFramePixels;
+  int fPlayTimePerFrame;
+  int fLastPlayTime;
+  BYTE* nextFramePixels{};
   //virtual void doStopGettingFrames(); // optional
 
 private:

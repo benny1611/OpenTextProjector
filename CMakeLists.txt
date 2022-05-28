@@ -18,12 +18,14 @@ add_link_options(-m64
 add_executable(OpenTextProjector
         main.cpp
         main.h
-        ScreenSource.cpp
-        ScreenSource.hh
         tools/tinythread.cpp
         tools/tinythread.h
         tools/base64.cpp
-        tools/base64.h)
+        tools/base64.h
+        tools/concurrent_queue.hpp
+        tools/encoder.hpp
+        tools/ScreenSource.hpp
+        tools/RTSPServer.hpp)
 
 target_include_directories(${PROJECT_NAME} PUBLIC includes)
 

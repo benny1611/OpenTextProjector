@@ -34,36 +34,84 @@ extern "C" {
 } // endof extern "C"
 #endif
 
-ScreenSource*
-ScreenSource::createNew(UsageEnvironment& env) {
-  return new ScreenSource(env);
-}
+void ffmpeg_encoder_start(AVCodecID codec_id, int fps, int width, int height);
 
 EventTriggerId ScreenSource::eventTriggerId = 0;
+tthread::mutex ScreenSource::frameMutex;
 
 unsigned ScreenSource::referenceCount = 0;
-static AVCodecContext *c = NULL;
+static AVCodecContext *c = nullptr;
 static AVFrame *frame;
 static AVPacket pkt;
-struct SwsContext *sws_context = NULL;
+struct SwsContext *sws_context = nullptr;
 
-static void ffmpeg_encoder_set_frame_yuv_from_rgb(uint8_t *rgb) {
-    const int in_linesize[1] = { 3 * c->width };
-    sws_context = sws_getCachedContext(sws_context,
-            c->width, c->height, AV_PIX_FMT_RGB24,
-            c->width, c->height, AV_PIX_FMT_YUV420P,
-            0, 0, 0, 0);
-    const uint8_t* const src_data[] = { rgb };
-    std::cout << "Sws_scale output: "  << std::endl;
+ScreenSource*
+ScreenSource::createNew(UsageEnvironment& env,
+                        int height, int width,
+                        int playTimePerFrame) {
+  return new ScreenSource(env, height, width, playTimePerFrame);
+}
+
+ScreenSource::ScreenSource(UsageEnvironment& env, int height,
+                           int width, int playTimePerFrame)
+        : FramedSource(env),
+        frameHeight(height),
+        frameWidth(width),
+        fPlayTimePerFrame(playTimePerFrame),
+        fLastPlayTime(0) {
+    if (referenceCount == 0) {
+        // Any global initialization of the device would be done here:
+        std::cout << "Starting to serve screenshots ..." << std::endl;
+    }
+    ++referenceCount;
+
+    std::cout << "Setting frame width and height and starting the encoder" << std::endl;
+    ffmpeg_encoder_start(AV_CODEC_ID_H264, 10, width, height);
+
+    if (eventTriggerId == 0) {
+        std::cout << "Event trigger done! ..." << std::endl;
+        eventTriggerId = envir().taskScheduler().createEventTrigger(deliverFrame0);
+    }
+    std::cout << "Is this still awaiting data (constructor): " << (bool)isCurrentlyAwaitingData() << std::endl;
+}
+
+ScreenSource::~ScreenSource() {
+    // Any instance-specific 'destruction' (i.e., resetting) of the device would be done here:
+    //%%% TO BE WRITTEN %%%
+
+    --referenceCount;
+    envir().taskScheduler().deleteEventTrigger(eventTriggerId);
+    eventTriggerId = 0;
+}
+
+static void ffmpeg_encoder_set_frame_yuv_from_rgb(const uint8_t *rgb) {
+    const int in_linesize[1] = { (3 * c->width) };
+    int ret;
+
+    frame = av_frame_alloc();
+    if (!frame) {
+        std::cerr << "Could not allocate video frame" << std::endl;
+        exit(1);
+    }
+    frame->format = c->pix_fmt;
+    frame->width  = c->width;
+    frame->height = c->height;
+    ret = av_image_alloc(frame->data, frame->linesize, c->width, c->height, c->pix_fmt, 32);
+    if (ret < 0) {
+        std::cerr << "Could not allocate raw picture buffer" << std::endl;
+        exit(1);
+    }
+    const uint8_t* const src_data[1] = { rgb };
+    std::cout << "Scaling" << std::endl;
     sws_scale(sws_context, src_data, in_linesize, 0,
-              c->height, frame->data, frame->linesize);
-    std::cout << "Done!" << std::endl;
+              c->height, frame->data, frame->linesize);  // this line can get tricky
+    std::cout << "Done scaling" << std::endl;
+    delete rgb;
 }
 
 /* Allocate resources and write header data to the output file. */
 void ffmpeg_encoder_start(AVCodecID codec_id, int fps, int width, int height) {
     const AVCodec *codec;
-    int ret;
     codec = avcodec_find_encoder(codec_id);
     if (!codec ) {
         std::cerr << "Codec not found" << std::endl;
@@ -81,22 +129,18 @@ void ffmpeg_encoder_start(AVCodecID codec_id, int fps, int width, int height) {
     c->time_base.den = fps;
     c->keyint_min = 600;
     c->pix_fmt = AV_PIX_FMT_YUV420P;
-    if (avcodec_open2(c, codec, NULL) < 0) {
+    if (avcodec_open2(c, codec, nullptr) < 0) {
         std::cerr << "Could not open codec" << std::endl;
         exit(1);
     }
-    frame = av_frame_alloc();
-    if (!frame) {
-        std::cerr << "Could not allocate video frame" << std::endl;
-        exit(1);
-    }
-    frame->format = c->pix_fmt;
-    frame->width  = c->width;
-    frame->height = c->height;
-    ret = av_image_alloc(frame->data, frame->linesize, c->width, c->height, c->pix_fmt, 32);
-    if (ret < 0) {
-        std::cerr << "Could not allocate raw picture buffer" << std::endl;
-        exit(1);
+    if (sws_context == nullptr) {
+        sws_context = sws_getContext(c->width, c->height, AV_PIX_FMT_RGB24, c->width,
+                                     c->height, AV_PIX_FMT_YUVA420P, SWS_FAST_BILINEAR,
+                                     nullptr, nullptr, nullptr);
+        /*sws_context = sws_getCachedContext(sws_context,
+            c->width, c->height, AV_PIX_FMT_RGB24,
+            c->width, c->height, AV_PIX_FMT_YUV420P,
+            0, 0, 0, 0);*/
     }
 }
 
@@ -126,8 +170,6 @@ void ffmpeg_encoder_finish(unsigned char* fTo) {
         }
     } while (got_output);
     memmove(fTo, endcode, sizeof(endcode));
-    //fwrite(endcode, 1, sizeof(endcode), file);
-    //fclose(file);
     avcodec_close(c);
     av_free(c);
     av_freep(&frame->data[0]);
@@ -140,14 +182,10 @@ Must be called after ffmpeg_encoder_start, and ffmpeg_encoder_finish
 must be called after the last call to this function.
 */
 void ffmpeg_encoder_encode_frame(uint8_t *rgb, unsigned char* fTo) {
-    std::cout << "Here it comes ..." << std::endl;
-    int got_output, error;
-    std::cout << "1" << std::endl;
+    int error;
     ffmpeg_encoder_set_frame_yuv_from_rgb(rgb);
-    std::cout << "2" << std::endl;
     av_init_packet(&pkt);
-    std::cout << "3" << std::endl;
-    pkt.data = NULL;
+    pkt.data = nullptr;
     pkt.size = 0;
     if (frame->pts == 1) {
         frame->key_frame = 1;
@@ -156,99 +194,81 @@ void ffmpeg_encoder_encode_frame(uint8_t *rgb, unsigned char* fTo) {
         frame->key_frame = 0;
         frame->pict_type = AV_PICTURE_TYPE_P;
     }
+    bool got_output = false;
 
-    error = avcodec_send_frame(c, frame);
-    if (error != AVERROR_EOF && error != AVERROR(EAGAIN) && error != 0){
-        std::cerr << "Error while encoding frame" << std::endl;
-        exit(1);
+    while (!got_output) {
+        error = avcodec_send_frame(c, frame);
+        if (error != AVERROR_EOF && error != AVERROR(EAGAIN) && error != 0){
+            std::cerr << "Error while encoding frame" << std::endl;
+            exit(1);
+        }
+        error = avcodec_receive_packet(c, &pkt);
+        got_output = error == 0;
+        if (error != -11) {
+            if (error != 0) {
+                std::cerr << "avcodec_receive_packet got another error: " << error << std::endl;
+            }
+            break;
+        }
     }
-    if ( (error = avcodec_receive_packet(c, &pkt)) == 0) {
-        got_output = 1;
-    }
-    std::cout << "Got output? " << got_output << std::endl;
+
+    std::cout << "Got output? " << got_output << " here's the error: " << error << std::endl;
     if (got_output) {
         std::cout << "Copying output..." << std::endl;
         memmove(fTo, pkt.data, pkt.size);
         av_packet_unref(&pkt);
     }
-}
-
-
-
-ScreenSource::ScreenSource(UsageEnvironment& env)
-  : FramedSource(env) {
-  if (referenceCount == 0) {
-    // Any global initialization of the device would be done here:
-    std::cout << "Starting to serve screenshots ..." << std::endl;
-  }
-  ++referenceCount;
-
-  // Any instance-specific initialization of the device would be done here:
-    /* find the mpeg1video encoder */
-  //codec = avcodec_find_encoder(AV_CODEC_ID_MPEG1VIDEO);
-  // We arrange here for our "deliverFrame" member function to be called
-  // whenever the next frame of data becomes available from the device.
-  //
-  // If the device can be accessed as a readable socket, then one easy way to do this is using a call to
-  //     envir().taskScheduler().turnOnBackgroundReadHandling( ... )
-  // (See examples of this call in the "liveMedia" directory.)
-  //
-  // If, however, the device *cannot* be accessed as a readable socket, then instead we can implement it using 'event triggers':
-  // Create an 'event trigger' for this device (if it hasn't already been done):
-  if (eventTriggerId == 0) {
-    std::cout << "Event trigger done! ..." << std::endl;
-    eventTriggerId = envir().taskScheduler().createEventTrigger(deliverFrame0);
-  }
-  std::cout << "Is this still awaiting data (constructor): " << (bool)isCurrentlyAwaitingData() << std::endl;
-}
-
-ScreenSource::~ScreenSource() {
-  // Any instance-specific 'destruction' (i.e., resetting) of the device would be done here:
-  //%%% TO BE WRITTEN %%%
-
-    --referenceCount;
-    envir().taskScheduler().deleteEventTrigger(eventTriggerId);
-    eventTriggerId = 0;
+    std::cout << "Done encoding the frame" << std::endl;
 }
 
 void ScreenSource::doGetNextFrame() {
     std::cout << "doGetNextFrame! ..." << std::endl;
-    std::cout << "Is this still awaiting data (doGetNextFrame): " << (bool)isCurrentlyAwaitingData() << std::endl;
     deliverFrame();
 }
 
 void ScreenSource::deliverFrame0(void* clientData) {
+    frameMutex.lock();
     std::cout << "deliverFrame0! ..." << std::endl;
     ((ScreenSource*)clientData)->deliverFrame();
+    std::cout << "deliverFrame0 - Done!" << std::endl;
+    frameMutex.unlock();
     //envir().taskScheduler().triggerEvent(eventTriggerId, this);
 }
 
 void ScreenSource::setNextFrame(BYTE* screenshot, int width, int height) {
-    bool startEncoder = frameWidth == 0 && frameHeight == 0;
-    if(startEncoder) {
-        std::cout << "Setting frame width and height and starting the encoder" << std::endl;
-        ffmpeg_encoder_start(AV_CODEC_ID_H264, 100, width, height);
-    }
-
     nextFramePixels = screenshot;
-    frameWidth = width;
-    frameHeight = height;
-    if (startEncoder) {
-        envir().taskScheduler().triggerEvent(eventTriggerId, this);
-    }
+    this->frameWidth = width;
+    this->frameHeight = height;
+    envir().taskScheduler().triggerEvent(eventTriggerId, this);
 }
 
 void ScreenSource::deliverFrame() {
+
     if (!isCurrentlyAwaitingData()) {
         std::cout << "Not ready yet sorry" << std::endl;
         return; // we're not ready for the data yet
     }
-    if(frameWidth == 0 && frameHeight == 0) {
+    if(frameWidth == 0 || frameHeight == 0 || nextFramePixels == nullptr) {
         std::cout << "Not ready yet sorry, no frames were set" << std::endl;
         return;
     }
-    std::cout << "Delivering..." << std::endl;
-    frameMutex.lock();
+    std::cout << "Delivering... " << frameWidth << " X " << frameHeight << std::endl;
+
+    //std::cout << "Done getting the lock :)" << std::endl;
+    if (fPlayTimePerFrame > 0 && fMaxSize > 0) {
+        if (fPresentationTime.tv_sec == 0 && fPresentationTime.tv_usec == 0) {
+            gettimeofday(&fPresentationTime, nullptr);
+        } else {
+            unsigned uSeconds = fPresentationTime.tv_usec + fLastPlayTime;
+            fPresentationTime.tv_sec += uSeconds / 1000000;
+            fPresentationTime.tv_usec = uSeconds % 1000000;
+        }
+
+        fLastPlayTime = (fPlayTimePerFrame * fFrameSize) / fMaxSize;
+        fDurationInMicroseconds = fLastPlayTime;
+    } else {
+        gettimeofday(&fPresentationTime, nullptr);
+    }
     ffmpeg_encoder_encode_frame(nextFramePixels, fTo);
-    frameMutex.unlock();
+    FramedSource::afterGetting(this);
 }
