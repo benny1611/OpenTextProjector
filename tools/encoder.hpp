@@ -81,7 +81,7 @@ public:
         return true;
     }
 
-    bool encoding(const uint8_t* src){
+    bool encoding(const uint8_t* src) {
         // scale change
         {
             int srcStride = m_x264Params.i_width * 3;
@@ -119,6 +119,7 @@ public:
 
             m_pts++;
         }
+        std::cout << "Pushed " << m_numNals << " nals in the queue" << std::endl;
 
         return true;
     }

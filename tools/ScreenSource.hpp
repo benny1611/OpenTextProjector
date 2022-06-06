@@ -6,17 +6,13 @@ extern "C" {
 }
 
 #include "liveMedia/FramedSource.hh"
-#include "concurrent_queue.hpp"
+#include "groupsock/GroupsockHelper.hh"
 #include "encoder.hpp"
 
 class ScreenSource: public FramedSource {
 public:
-    static std::vector<ScreenSource*> createNew(UsageEnvironment& env, unsigned preferredFrameSize, unsigned playTimePerFrame, const int sessionNum) {
-        std::vector<ScreenSource*> screenSourceArray;
-        for (auto i = 0; i < sessionNum; i++) {
-            screenSourceArray.push_back(new ScreenSource(env, preferredFrameSize, playTimePerFrame));
-        }
-        return screenSourceArray;
+    static ScreenSource* createNew(UsageEnvironment& env, unsigned preferredFrameSize, unsigned playTimePerFrame) {
+        return new ScreenSource(env, preferredFrameSize, playTimePerFrame);
     }
 
     bool openEncoder(int srcWidth, int srcHeight, int fps) {
@@ -36,7 +32,7 @@ public:
 protected:
     ScreenSource(UsageEnvironment& env, unsigned preferredFrameSize, unsigned playTimePerFrame):
     FramedSource(env),
-    fPreferredFrameSize(fMaxSize),
+    fPreferredFrameSize(preferredFrameSize),
     fPlayTimePerFrame(playTimePerFrame),
     fLastPlayTime(0),
     m_encoder(Encoder(m_buffer)),
@@ -89,8 +85,9 @@ private:
             else {
                 fFrameSize = newFrameSize;
             }
-
-            auto res = std::copy(m_nalToDeliver.p_payload, m_nalToDeliver.p_payload + m_nalToDeliver.i_payload, fTo);
+            std::cout << "Here is the size of the image: " << m_nalToDeliver.i_payload << std::endl;
+            //std::copy(m_nalToDeliver.p_payload, m_nalToDeliver.p_payload + m_nalToDeliver.i_payload, fTo);
+            memmove(fTo, m_nalToDeliver.p_payload, m_nalToDeliver.i_payload);
 
             FramedSource::afterGetting(this);
         }
@@ -99,8 +96,6 @@ private:
 private:
     unsigned fPreferredFrameSize;
     unsigned fPlayTimePerFrame;
-    unsigned fNumSources;
-    unsigned fCurrentlyReadSourceNumber;
     unsigned fLastPlayTime;
 
     Encoder m_encoder;
@@ -109,7 +104,6 @@ private:
     concurrent_queue<x264_nal_t> m_buffer;
 
     unsigned m_referenceCount;
-    timeval m_currentTime;
 
     EventTriggerId m_eventTriggerId;
 };

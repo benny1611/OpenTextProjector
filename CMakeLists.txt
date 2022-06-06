@@ -44,6 +44,8 @@ target_link_libraries(${PROJECT_NAME}
         ${CMAKE_SOURCE_DIR}/libraries/libgroupsock.a
         ${CMAKE_SOURCE_DIR}/libraries/libBasicUsageEnvironment.a
         ${CMAKE_SOURCE_DIR}/libraries/libUsageEnvironment.a
+        ${CMAKE_SOURCE_DIR}/libraries/libx264.a
+        ${CMAKE_SOURCE_DIR}/libraries/libx264.dll.a
         opengl32
         glu32
         winmm
