@@ -48,19 +48,19 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = C:/msys64/mingw64/bin/cmake.exe
+CMAKE_COMMAND = cmake.exe
 
 # The command to remove a file.
-RM = C:/msys64/mingw64/bin/cmake.exe -E rm -f
+RM = cmake.exe -E rm -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = "D:/Software/Some other projects/C-Projects/OpenTextProjector"
+CMAKE_SOURCE_DIR = "."
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = "D:/Software/Some other projects/C-Projects/OpenTextProjector"
+CMAKE_BINARY_DIR = "."
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start "D:/Software/Some other projects/C-Projects/OpenTextProjector/CMakeFiles" "D:/Software/Some other projects/C-Projects/OpenTextProjector//CMakeFiles/progress.marks"
+	$(CMAKE_COMMAND) -E cmake_progress_start "./CMakeFiles" "./CMakeFiles/progress.marks"
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start "D:/Software/Some other projects/C-Projects/OpenTextProjector/CMakeFiles" 0
+	$(CMAKE_COMMAND) -E cmake_progress_start "./CMakeFiles" 0
 .PHONY : all
 
 # The main clean target
