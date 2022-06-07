@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="OpenTextProjector"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="D:/Software/Some other projects/C-Projects/OpenTextProjector"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="OpenTextProjector">
+				<Option output="D:/Software/Some other projects/C-Projects/OpenTextProjector/OpenTextProjector.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="D:/Software/Some other projects/C-Projects/OpenTextProjector"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/."/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/includes/groupsock/include"/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/includes/UsageEnvironment/include"/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/includes"/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/libraries"/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../include/c++/11.2.0"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../include/c++/11.2.0/x86_64-w64-mingw32"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../include/c++/11.2.0/backward"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/include"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../include"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/include-fixed"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../x86_64-w64-mingw32/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 OpenTextProjector"/>
+					<CompileFile command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="OpenTextProjector/fast">
+				<Option output="D:/Software/Some other projects/C-Projects/OpenTextProjector/OpenTextProjector.exe" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="D:/Software/Some other projects/C-Projects/OpenTextProjector"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/."/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/includes/groupsock/include"/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/includes/UsageEnvironment/include"/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/includes"/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/libraries"/>
+					<Add directory="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../include/c++/11.2.0"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../include/c++/11.2.0/x86_64-w64-mingw32"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../include/c++/11.2.0/backward"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/include"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../include"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/include-fixed"/>
+					<Add directory="C:/msys64/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/11.2.0/../../../../x86_64-w64-mingw32/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 OpenTextProjector/fast"/>
+					<CompileFile command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="D:/Software/Some other projects/C-Projects/OpenTextProjector"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="D:/Software/Some other projects/C-Projects/OpenTextProjector"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="C:/msys64/mingw64/bin/make.exe -f &quot;D:/Software/Some\ other\ projects/C-Projects/OpenTextProjector/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/main.cpp">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/main.h">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools/RTSPServer.hpp">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools/ScreenSource.hpp">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools/base64.cpp">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools/base64.h">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools/concurrent_queue.hpp">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools/encoder.hpp">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools/tinythread.cpp">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/tools/tinythread.h">
+			<Option target="OpenTextProjector"/>
+		</Unit>
+		<Unit filename="D:/Software/Some other projects/C-Projects/OpenTextProjector/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
