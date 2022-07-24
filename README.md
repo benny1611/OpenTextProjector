@@ -12,7 +12,7 @@
 
 There are lots of programs to project text on screen out there, but none offered the possibility to control the monitor remotely (at least none that I could find). This program lets you show text on the screen of a computer via TCP-Socket. The program gets a JSON obect with information about the text, and the monitor and it just shows the desired text on the desired monitor. I had this project idea for church, when I had to show verses and lyrics while doing a live streaming. This project gives you the posibility to share the work with someone else as they can change the lyrics/verses via phone. 
 
-**ATTENTION**: This project is only the backend, meaning it has no user interface, it just shows the text on the screen. We are currently working on a web intreface for this project. 
+**ATTENTION**: This project is only the backend, meaning it has no user interface, it just shows the text on the screen. I am currently working on a web intreface for this project. 
 
 The goal of this project is to have a program that can show text on screen and be able to take commands from a TCP socket, also it is desired to have a RTSP/RTMP server to stream the text for a streaming software (like OBS).
 
@@ -24,7 +24,7 @@ Currently OpenTextProjector only works on Windows (tested on Windows 10), but ot
 
 To install this project you need to download the release and double click on the .exe file. If it doesn't work you may need to change the graphics card under which the program is run. For example if you hava an NVIDIA graphics card, you need to go to the NVIDIA control panel and under ```3D Settings``` select ```Manage 3D settings```, then switch to the ```Program Settings``` tab and click on add and select the executable ```OpenTextProjector.exe```. After that select your NVIDIA graphics processor as your preferred graphics processor.
 
-Any contribution is welcome. I've made this project as easy to build as it can get, you only have to open the project in Code::Blocks (if it doesn't work try to change the graphics card as explained above).
+Any contribution is welcome. I've made this project as easy to build as it can get, you only have to open the project in Visual Studio (if you don't see any text try to change the graphics card as explained above). You may need to set the cmake path too.
 
 ## Documentation
 
