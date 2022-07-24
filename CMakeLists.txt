@@ -4,9 +4,9 @@ project(OpenTextProjector)
 set(CMAKE_CXX_STANDARD 14)
 
 include_directories(.)
+include_directories(includes)
 include_directories(includes/groupsock/include)
 include_directories(includes/UsageEnvironment/include)
-include_directories(includes)
 include_directories(libraries)
 include_directories(tools)
 

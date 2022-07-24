@@ -5,8 +5,8 @@ extern "C" {
 #include "x264/x264.h"
 }
 
-#include "liveMedia/FramedSource.hh"
-#include "groupsock/GroupsockHelper.hh"
+#include "FramedSource.hh"
+#include "GroupsockHelper.hh"
 #include "encoder.hpp"
 
 class ScreenSource: public FramedSource {

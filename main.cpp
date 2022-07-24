@@ -23,8 +23,8 @@
 #include "tools/base64.h"
 #include "tools/ScreenSource.hpp"
 #include "tools/RTSPServer.hpp"
-#include <liveMedia/liveMedia.hh>
-#include <BasicUsageEnvironment/BasicUsageEnvironment.hh>
+#include <liveMedia.hh>
+#include <BasicUsageEnvironment.hh>
 #include <GroupsockHelper.hh>
 
 using std::map;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 #endif
     // Look for available monitors
     GLFWmonitor** monitors = glfwGetMonitors(&TOTAL_MONITORS);
-    Monitor choiceMonitors[TOTAL_MONITORS] = {};
+    Monitor choiceMonitors[2] = {};
     getMonitors(monitors, choiceMonitors);
 
     for (int i=0; i<TOTAL_MONITORS; i++) {
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     glfwSetMonitorCallback(monitor_callback);
 
     CHOICE_MONITORS = choiceMonitors;
-    DEFAULT_MONITOR = CHOICE_MONITORS[0];
+    DEFAULT_MONITOR = CHOICE_MONITORS[1];
     MONITOR_TO_CHANGE = 0;
     TEXT_SCALE = 1.0f;
     TEXT.push_back(L"WELCOME TO");
@@ -815,7 +815,7 @@ void monitor_callback(GLFWmonitor* monitor, int event) {
     monitor_event_mutex.lock();
     if (event == GLFW_DISCONNECTED || event == GLFW_CONNECTED) {
         GLFWmonitor** monitors = glfwGetMonitors(&TOTAL_MONITORS);
-        Monitor choiceMonitors[TOTAL_MONITORS] = {};
+        Monitor choiceMonitors[2] = {};
         getMonitors(monitors, choiceMonitors);
         CHOICE_MONITORS = choiceMonitors;
         DEFAULT_MONITOR = CHOICE_MONITORS[0];

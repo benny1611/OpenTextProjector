@@ -1,9 +1,9 @@
 #ifndef OPENTEXTPROJECTOR_RTSP
 #define OPENTEXTPROJECTOR_RTSP
 
-#include "BasicUsageEnvironment/BasicUsageEnvironment.hh"
-#include "liveMedia/liveMedia.hh"
-#include "groupsock/GroupsockHelper.hh"
+#include "BasicUsageEnvironment.hh"
+#include "liveMedia.hh"
+#include "GroupsockHelper.hh"
 #include "ScreenSource.hpp"
 
 extern "C" {

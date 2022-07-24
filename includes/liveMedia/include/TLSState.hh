@@ -31,7 +31,7 @@ along with this library; if not, write to the Free Software Foundation, Inc.,
 #include "UsageEnvironment.hh"
 #endif
 #ifndef NO_OPENSSL
-#include <openssl/ssl.h>
+#include "openssl/ssl.h"
 #endif
 
 class TLSState {
