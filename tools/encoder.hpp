@@ -119,7 +119,7 @@ public:
 
             m_pts++;
         }
-        std::cout << "Pushed " << m_numNals << " nals in the queue" << std::endl;
+        //std::cout << "Pushed " << m_numNals << " nals in the queue" << std::endl;
 
         return true;
     }

@@ -281,6 +281,7 @@ int main(int argc, char *argv[]) {
 }
 
 void listen_for_connection(void* aArg) {
+    cout << "Started listening for commands" << endl;
     while (true) {
         try {
             asio::io_context io_context;
@@ -394,6 +395,7 @@ void listen_for_connection(void* aArg) {
             cerr << "Another exception has occurred: " << e.what() << endl;
         }
     }
+    cout << "Done listening for commands" << endl;
 }
 
 void rtspScreenShot(void * aArg) {
