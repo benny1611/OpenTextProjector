@@ -24,7 +24,11 @@ Currently OpenTextProjector only works on Windows (tested on Windows 10), but ot
 
 To install this project you need to download the release and double click on the .exe file. If it doesn't work you may need to change the graphics card under which the program is run. For example if you hava an NVIDIA graphics card, you need to go to the NVIDIA control panel and under ```3D Settings``` select ```Manage 3D settings```, then switch to the ```Program Settings``` tab and click on add and select the executable ```OpenTextProjector.exe```. After that select your NVIDIA graphics processor as your preferred graphics processor.
 
-Any contribution is welcome. I've made this project as easy to build as it can get, you only have to open the project in Visual Studio (if you don't see any text try to change the graphics card as explained above). You may need to set the cmake path too.
+Any contribution is welcome. I've made this project as easy to build as it can get, you only have to open the project in Visual Studio (2022). Steps you have to follow:
+1. Download and install Visual Studio Comunity Version (2022) from the Microsoft webpage
+2. In the installer select "Desktop development with C++" then click install
+3. Now you should be able to at least build the project.
+4. If it's running, but you can't see any text on screen, change the graphics card as explaind above for the following file: ```/path/to/OpenTextPojector/Debug/OpenTextProjector.exe```
 
 ## Documentation
 
