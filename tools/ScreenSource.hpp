@@ -85,9 +85,8 @@ private:
             else {
                 fFrameSize = newFrameSize;
             }
-            //std::cout << "Here is the size of the image: " << m_nalToDeliver.i_payload << std::endl;
-            //std::copy(m_nalToDeliver.p_payload, m_nalToDeliver.p_payload + m_nalToDeliver.i_payload, fTo);
-            memmove(fTo, m_nalToDeliver.p_payload, m_nalToDeliver.i_payload);
+
+            memcpy(fTo, m_nalToDeliver.p_payload, m_nalToDeliver.i_payload);
 
             FramedSource::afterGetting(this);
         }

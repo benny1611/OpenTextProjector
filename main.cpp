@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     glfwSetMonitorCallback(monitor_callback);
 
     CHOICE_MONITORS = choiceMonitors;
-    DEFAULT_MONITOR = CHOICE_MONITORS[1];
+    DEFAULT_MONITOR = CHOICE_MONITORS[0];
     MONITOR_TO_CHANGE = 0;
     TEXT_SCALE = 1.0f;
     TEXT.push_back(L"WELCOME TO");
@@ -419,12 +419,11 @@ void rtspScreenShot(void * aArg) {
 void startServer(void * aArg) {
     rtspServer = new OTPRTSPServer(554, 8554);
 
-    if (!rtspServer->init(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 20)) {
+    if (!rtspServer->init(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 20, "Screenshots")) {
         cerr << "Could not start the RTSP Server" << endl;
         exit(1);
     }
 
-    rtspServer->addSession("ScreenShots");
     rtspServer->play();
     readyToSetFrame = true;
     rtspServer->doEvent();

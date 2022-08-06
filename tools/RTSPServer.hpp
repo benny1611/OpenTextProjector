@@ -24,74 +24,65 @@ public:
 
     ~OTPRTSPServer(){}
 
-    bool init(int srcWidth, int srcHeight, int fps) {
+    bool init(int srcWidth, int srcHeight, int fps, const std::string& streamName) {
         m_srcWidth = srcWidth;
         m_srcHeight = srcHeight;
         m_fps = fps;
 
         OutPacketBuffer::maxSize = 100000;
 
-        int cNameLen = 100;
-        m_cName.resize(cNameLen + 1, 0);
-        gethostname((char*)&(m_cName[0]), cNameLen);
+        const unsigned maxCNAMElen = 100;
+        unsigned char CNAME[maxCNAMElen + 1];
+        gethostname((char*)CNAME, maxCNAMElen);
+        CNAME[maxCNAMElen] = '\0'; // just in case
 
-        m_rtspServer = RTSPServer::createNew(*m_env, m_rtspPort, nullptr);
+        sockaddr_storage destinationAddress;
+        destinationAddress.ss_family = AF_INET;
+        ((struct sockaddr_in&)destinationAddress).sin_addr.s_addr = chooseRandomIPv4SSMAddress(*m_env);
+        const Port rtpPort(m_rtpPortNum);
+        const Port rtcpPort(m_rtcpPortNum);
+
+        m_rtpGroupSock = new Groupsock(*m_env, destinationAddress, rtpPort, m_ttl);
+        m_rtpGroupSock->multicastSendOnly();
+
+        m_rtcpGroupSock = new Groupsock(*m_env, destinationAddress, rtcpPort, m_ttl);
+        m_rtcpGroupSock->multicastSendOnly();
+
+        m_videoSink = H264VideoRTPSink::createNew(*m_env, m_rtpGroupSock, m_rtpPayloadFormat);
+
+        m_rtcp = RTCPInstance::createNew(*m_env, m_rtcpGroupSock, m_estimatedSessionBandwidth, CNAME, m_videoSink, nullptr, True);
+
+        m_rtspServer = RTSPServer::createNew(*m_env, m_rtspPort);
         if (m_rtspServer == nullptr) {
             std::cerr << "Failed to create RTSP server: " << m_env->getResultMsg() << std::endl;
             return false;
         }
 
-        m_proxyRtspServer = RTSPServerWithREGISTERProxying::createNew(*m_env, m_rtspProxyPort, nullptr, nullptr, 65, true, 2, nullptr,nullptr);
-        if (m_proxyRtspServer == nullptr) {
-            std::cerr << "Failed to create Proxy RTSP server: " << m_env->getResultMsg() << std::endl;
-            return false;
-        }
+        ServerMediaSession* sms = ServerMediaSession::createNew(*m_env, streamName.c_str(), "Screen image", "Image from the screen", True);
 
-        m_screenSource = ScreenSource::createNew(*m_env, m_srcWidth * m_srcHeight, 10);
+        sms->addSubsession(PassiveServerMediaSubsession::createNew(*m_videoSink, m_rtcp));
 
-        if (!m_screenSource->openEncoder(m_srcWidth, m_srcHeight, m_fps)) {
-            std::cerr << "Failed to open X264 encoder: " << std::endl;
-            return false;
-        }
+        m_rtspServer->addServerMediaSession(sms);
+        announceURL(m_rtspServer, sms);
 
         return true;
     }
 
-    void addSession(const std::string& streamName) {
-        sockaddr_storage destinationAddress;
-        ((struct sockaddr_in&)destinationAddress).sin_addr.s_addr = chooseRandomIPv4SSMAddress(*m_env);
-        const Port rtpPort(m_rtpPortNum);
-        const Port rtcpPort(m_rtcpPortNum);
-
-        auto rtpGroupSock = new Groupsock(*m_env, destinationAddress, rtpPort, m_ttl);
-        m_rtpGroupSock->multicastSendOnly();
-
-        auto rtcpGroupSock = new Groupsock(*m_env, destinationAddress, rtcpPort, m_ttl);
-        m_rtcpGroupSock->multicastSendOnly();
-
-        m_videoSink = H264VideoRTPSink::createNew(*m_env, rtpGroupSock, m_rtpPayloadFormat);
-
-        m_rtcp = RTCPInstance::createNew(*m_env, rtcpGroupSock, m_estimatedSessionBandwidth, &(m_cName[0]), m_videoSink, nullptr, True);
-
-        auto sms = ServerMediaSession::createNew(*m_env, streamName.c_str(), "Screen image", "Image from the screen", True);
-
-        sms->addSubsession(PassiveServerMediaSubsession::createNew(*m_videoSink, m_rtcp));
-
-        auto proxySms = ProxyServerMediaSession::createNew(*m_env, m_proxyRtspServer,
-                                                           m_rtspServer->rtspURL(sms), streamName.c_str(),
-                                                           nullptr, nullptr, 0, 2);
-
-        m_rtspServer->addServerMediaSession(sms);
-        m_proxyRtspServer->addServerMediaSession(proxySms);
-
-        std::cout << "Play this stream using the Local URL: " << m_rtspServer->rtspURL(sms) << std::endl;
-        std::cout << "Play this stream using the Proxy URL: " << m_proxyRtspServer->rtspURL(proxySms) << std::endl;
-    }
-
     inline void play() {
+        m_screenSource = ScreenSource::createNew(*m_env, m_srcWidth * m_srcHeight, 10);
+
+        if (m_screenSource == nullptr) {
+            *m_env << "Failed to create ScreenSource\n";
+            exit(1);
+        }
+
+        if (!m_screenSource->openEncoder(m_srcWidth, m_srcHeight, m_fps)) {
+            *m_env << "Failed to open X264 encoder: \n";
+            exit(1);
+        }
         m_videoES = m_screenSource;
         m_videoSource = H264VideoStreamFramer::createNew(*m_env, m_videoES);
-        m_videoSink->startPlaying(*m_videoSource, nullptr, nullptr);
+        m_videoSink->startPlaying(*m_videoSource, nullptr, m_videoSink);
     }
 
     inline void doEvent() {
@@ -104,15 +95,33 @@ public:
         m_screenSource->encode(src);
     }
 
+    void announceURL(RTSPServer* rtspServer, ServerMediaSession* sms) {
+        if (rtspServer == NULL || sms == NULL) return; // sanity check
+
+        UsageEnvironment& env = rtspServer->envir();
+
+        env << "Play this stream using the URL ";
+        if (weHaveAnIPv4Address(env)) {
+            char* url = rtspServer->ipv4rtspURL(sms);
+            env << "\"" << url << "\"";
+            delete[] url;
+            if (weHaveAnIPv6Address(env)) env << " or ";
+        }
+        if (weHaveAnIPv6Address(env)) {
+            char* url = rtspServer->ipv6rtspURL(sms);
+            env << "\"" << url << "\"";
+            delete[] url;
+        }
+        env << "\n";
+    }
+
 private:
     // live555
     UsageEnvironment* m_env;
     TaskScheduler* m_scheduler;
 
     RTSPServer* m_rtspServer;
-    RTSPServer* m_proxyRtspServer;
 
-    std::vector<unsigned char> m_cName;
     const unsigned int m_rtpPortNum;
     const unsigned int m_rtcpPortNum;
     const unsigned char m_ttl;

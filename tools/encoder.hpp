@@ -119,6 +119,7 @@ public:
 
             m_pts++;
         }
+        delete src;
         //std::cout << "Pushed " << m_numNals << " nals in the queue" << std::endl;
 
         return true;
