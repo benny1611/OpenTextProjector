@@ -38,4 +38,9 @@ public:
         data = the_queue.front();
         the_queue.pop();
     }
+
+    int size() {
+        tthread::lock_guard<tthread::mutex>(this->the_mutex);
+        return the_queue.size();
+    }
 };

@@ -69,7 +69,7 @@ public:
     }
 
     inline void play() {
-        m_screenSource = ScreenSource::createNew(*m_env, m_srcWidth * m_srcHeight, 10);
+        m_screenSource = ScreenSource::createNew(*m_env, 1, 100000);
 
         if (m_screenSource == nullptr) {
             *m_env << "Failed to create ScreenSource\n";

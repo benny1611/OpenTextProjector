@@ -267,10 +267,15 @@ int main(int argc, char *argv[]) {
             //cout << "setting screenshot to false" << endl;
             send_screenshot = false;
             // Make the BYTE array, factor of 3 because it's RBG.
-            BYTE* pixels = new BYTE[3 * DEFAULT_MONITOR.maxResolution.width * DEFAULT_MONITOR.maxResolution.height];
-            //glPixelStorei(GL_PACK_ALIGNMENT, 1);
-            glReadPixels(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-            rtspServer->streamImage(pixels, 0);
+            std::vector<uint8_t> pixels(3 * DEFAULT_MONITOR.maxResolution.width * DEFAULT_MONITOR.maxResolution.height);
+            glReadPixels(0, 0, DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+            // flip the image
+            for (int line = 0; line != DEFAULT_MONITOR.maxResolution.height / 2; ++line) {
+                std::swap_ranges(pixels.begin() + 3 * DEFAULT_MONITOR.maxResolution.width * line,
+                    pixels.begin() + 3 * DEFAULT_MONITOR.maxResolution.width * (line + 1),
+                    pixels.begin() + 3 * DEFAULT_MONITOR.maxResolution.width * (DEFAULT_MONITOR.maxResolution.height - line - 1));
+            }
+            rtspServer->streamImage(pixels.data(), 0);
         }
         screenshot_mutex.unlock();
     }
@@ -419,7 +424,7 @@ void rtspScreenShot(void * aArg) {
 void startServer(void * aArg) {
     rtspServer = new OTPRTSPServer(554, 8554);
 
-    if (!rtspServer->init(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 20, "Screenshots")) {
+    if (!rtspServer->init(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 10, "opentextprojector")) {
         cerr << "Could not start the RTSP Server" << endl;
         exit(1);
     }

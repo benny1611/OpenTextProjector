@@ -25,33 +25,33 @@ public:
     }
 
     bool open(int srcWidth, int srcHeight, int fps) {
-        x264_param_default_preset(&m_x264Params, "ultrafast", "zerolatency");
+        x264_param_default_preset(&m_x264Params, "veryfast", "zerolatency");
         m_x264Params.i_log_level = X264_LOG_ERROR;
 
-        m_x264Params.i_threads = 2;
+        m_x264Params.i_threads = 1;
         m_x264Params.i_width = srcWidth;
         m_x264Params.i_height = srcHeight;
         m_x264Params.i_fps_num = fps;
         m_x264Params.i_fps_den = 1;
-        m_x264Params.i_csp = X264_CSP_I420;
+        //m_x264Params.i_csp = X264_CSP_I420;
 
         m_x264Params.i_keyint_max = fps;
         m_x264Params.b_intra_refresh = 1;
 
         m_x264Params.rc.i_rc_method = X264_RC_CRF;
-        m_x264Params.rc.i_vbv_buffer_size = 100;
-        m_x264Params.rc.i_vbv_max_bitrate = 1000;
+        //m_x264Params.rc.i_vbv_buffer_size = 100;
+        //m_x264Params.rc.i_vbv_max_bitrate = 1000;
         m_x264Params.rc.f_rf_constant = 25;
         m_x264Params.rc.f_rf_constant_max = 35;
-        m_x264Params.i_sps_id = 7;
+        //m_x264Params.i_sps_id = 7;
 
         m_x264Params.b_repeat_headers = 1;
         m_x264Params.b_annexb = 1;
 
         x264_param_apply_profile(&m_x264Params, "baseline");
 
-        m_in.i_type = X264_TYPE_AUTO;
-        m_in.img.i_csp = X264_CSP_I420;
+        //m_in.i_type = X264_TYPE_AUTO;
+        //m_in.img.i_csp = X264_CSP_I420;
 
 
         if(m_encoder){
@@ -65,13 +65,13 @@ public:
             return false;
         }
 
-        if(x264_picture_alloc(&m_in, m_x264Params.i_csp, m_x264Params.i_width, m_x264Params.i_height)){
+        if(x264_picture_alloc(&m_in, X264_CSP_I420, m_x264Params.i_width, m_x264Params.i_height)){
             std::cerr << "Cannot allocate x264 picure" << std::endl;
             return false;
         }
 
         // create sws handle
-        m_sws = sws_getContext(m_x264Params.i_width, m_x264Params.i_height, m_inFormat, m_x264Params.i_width, m_x264Params.i_height, AV_PIX_FMT_YUV420P, SWS_FAST_BILINEAR,
+        m_sws = sws_getContext(m_x264Params.i_width, m_x264Params.i_height, AV_PIX_FMT_RGB24, m_x264Params.i_width, m_x264Params.i_height, AV_PIX_FMT_YUV420P, SWS_FAST_BILINEAR,
                                nullptr, nullptr, nullptr);
         if (!m_sws){
             std::cerr << "Cannot create SWS context" << std::endl;
@@ -119,8 +119,7 @@ public:
 
             m_pts++;
         }
-        delete src;
-        //std::cout << "Pushed " << m_numNals << " nals in the queue" << std::endl;
+        // no need to delete the vector anymore, C++ guarantees that the destructor of std will be called when the method executes
 
         return true;
     }
