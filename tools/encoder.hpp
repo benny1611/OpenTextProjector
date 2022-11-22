@@ -20,15 +20,17 @@ public:
     Encoder(concurrent_queue<x264_nal_t>& buffer): m_encoder(nullptr), m_numNals(0), m_pts(0), m_buffer(buffer){}
 
     ~Encoder() {
-        x264_encoder_close(m_encoder);
-        sws_freeContext(m_sws);
+        //x264_encoder_close(m_encoder);
+        //delete m_sws;
+        //sws_freeContext(m_sws);
+        //m_buffer.empty();
     }
 
     bool open(int srcWidth, int srcHeight, int fps) {
-        x264_param_default_preset(&m_x264Params, "veryfast", "zerolatency");
+        x264_param_default_preset(&m_x264Params, "ultrafast", "zerolatency");
         m_x264Params.i_log_level = X264_LOG_ERROR;
 
-        m_x264Params.i_threads = 1;
+        m_x264Params.i_threads = 2;
         m_x264Params.i_width = srcWidth;
         m_x264Params.i_height = srcHeight;
         m_x264Params.i_fps_num = fps;

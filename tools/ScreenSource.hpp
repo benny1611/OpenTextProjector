@@ -29,6 +29,10 @@ public:
         envir().taskScheduler().triggerEvent(m_eventTriggerId, this);
     }
 
+    ~ScreenSource() {
+        m_encoder.~Encoder();
+    }
+
 protected:
     ScreenSource(UsageEnvironment& env, unsigned preferredFrameSize, unsigned playTimePerFrame):
     FramedSource(env),

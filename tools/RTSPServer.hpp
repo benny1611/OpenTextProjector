@@ -22,7 +22,9 @@ public:
         m_env = BasicUsageEnvironment::createNew(*m_scheduler);
     }
 
-    ~OTPRTSPServer(){}
+    ~OTPRTSPServer(){
+        Medium::close(m_rtspServer);
+    }
 
     bool init(int srcWidth, int srcHeight, int fps, const std::string& streamName) {
         m_srcWidth = srcWidth;
@@ -69,7 +71,7 @@ public:
     }
 
     inline void play() {
-        m_screenSource = ScreenSource::createNew(*m_env, 1, 100000);
+        m_screenSource = ScreenSource::createNew(*m_env, m_srcWidth * m_srcHeight, 10);
 
         if (m_screenSource == nullptr) {
             *m_env << "Failed to create ScreenSource\n";
@@ -82,12 +84,17 @@ public:
         }
         m_videoES = m_screenSource;
         m_videoSource = H264VideoStreamFramer::createNew(*m_env, m_videoES);
+        std::cout << "Actually playing..." << std::endl;
         m_videoSink->startPlaying(*m_videoSource, nullptr, m_videoSink);
     }
 
-    inline void doEvent() {
+    inline void doEvent(bool& readyToSend, volatile char* watchVar) {
+        std::cout << "Playing..." << std::endl;
+        readyToSend = true;
+        play();
+        tthread::this_thread::sleep_for(tthread::chrono::milliseconds(33));
         std::cout << "Doing event loop..." << std::endl;
-        m_env->taskScheduler().doEventLoop();
+        m_env->taskScheduler().doEventLoop(watchVar);
         std::cout << "Done doing event loop" << std::endl;
     }
 

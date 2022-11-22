@@ -7,6 +7,7 @@ class concurrent_queue
 private:
     std::queue<Data> the_queue;
     mutable tthread::mutex the_mutex;
+    
 public:
     void push(const Data& data)
     {

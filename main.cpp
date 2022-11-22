@@ -76,6 +76,7 @@ int MONITOR_TO_CHANGE;
 GLFWwindow* WINDOW;
 bool monitor_event = false;
 tthread::thread* rtsp;
+tthread::thread* serverScreenShots;
 tthread::mutex monitor_event_mutex;
 tthread::mutex text_mutex;
 tthread::mutex position_mutex;
@@ -89,6 +90,7 @@ bool send_screenshot = false;
 UsageEnvironment* env;
 bool readyToSetFrame = false;
 OTPRTSPServer* rtspServer;
+char volatile watchVariable;
 
 
 
@@ -145,13 +147,11 @@ int main(int argc, char *argv[]) {
         rtsp_server_mutex.lock();
         if (RTSP_SERVER_SHOULD_START) {
             RTSP_SERVER_SHOULD_START = false;
-            tthread::thread serverScreenShots(rtspScreenShot, 0);
+            serverScreenShots = new tthread::thread(rtspScreenShot, 0);
             rtsp = new tthread::thread(startServer, 0);
             rtsp->detach();
             cout << "Detached ..." << endl;
-            //tthread::thread startRTSPServer(startServer, 0);
-            serverScreenShots.detach();
-            //startRTSPServer.detach();
+            serverScreenShots->detach();
         }
         rtsp_server_mutex.unlock();
 
@@ -263,6 +263,7 @@ int main(int argc, char *argv[]) {
 
         // Screenshot:
         screenshot_mutex.lock();
+        rtsp_server_mutex.lock();
         if(send_screenshot && readyToSetFrame) {
             //cout << "setting screenshot to false" << endl;
             send_screenshot = false;
@@ -277,6 +278,7 @@ int main(int argc, char *argv[]) {
             }
             rtspServer->streamImage(pixels.data(), 0);
         }
+        rtsp_server_mutex.unlock();
         screenshot_mutex.unlock();
     }
 	printf("%d", glGetError());
@@ -378,15 +380,19 @@ void listen_for_connection(void* aArg) {
                 }
                 try {
                     string server = command["server"].get<string>();
+                    cout << "locking... to stop XD" << endl;
                     rtsp_server_mutex.lock();
                     if (server == "start" && !RTSP_SERVER_STARTED) {
                         cout << "Starting the server..." << endl;
                         RTSP_SERVER_STARTED = true;
                         RTSP_SERVER_SHOULD_START = true;
+                        watchVariable = NULL;
                     } else if (server == "stop" && RTSP_SERVER_STARTED) {
                         cout << "Closing server ..." << endl;
                         RTSP_SERVER_STARTED = false;
-                        rtsp_server_mutex.unlock();
+                        watchVariable = 1;
+                        readyToSetFrame = false;
+                        delete rtspServer;
                     } else {
                         cerr << "Error: command \"" << server << "\" not valid. Is server currently running: " << RTSP_SERVER_STARTED << endl;
                     }
@@ -412,7 +418,7 @@ void rtspScreenShot(void * aArg) {
             break;
         }
         rtsp_server_mutex.unlock();
-        tthread::this_thread::sleep_for(tthread::chrono::milliseconds(100));
+        tthread::this_thread::sleep_for(tthread::chrono::milliseconds(33));
         screenshot_mutex.lock();
         //cout << "setting screenshot to true" << endl;
         send_screenshot = true;
@@ -424,14 +430,12 @@ void rtspScreenShot(void * aArg) {
 void startServer(void * aArg) {
     rtspServer = new OTPRTSPServer(554, 8554);
 
-    if (!rtspServer->init(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 10, "opentextprojector")) {
+    if (!rtspServer->init(DEFAULT_MONITOR.maxResolution.width, DEFAULT_MONITOR.maxResolution.height, 30, "opentextprojector")) {
         cerr << "Could not start the RTSP Server" << endl;
         exit(1);
     }
 
-    rtspServer->play();
-    readyToSetFrame = true;
-    rtspServer->doEvent();
+    rtspServer->doEvent(readyToSetFrame, &watchVariable);
 }
 
 list<wstring> getTextFromCommand(json command) {
