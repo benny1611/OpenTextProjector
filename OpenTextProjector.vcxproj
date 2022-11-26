@@ -278,6 +278,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(ProjectDir)\includes;$(ProjectDir)\includes\BasicUsageEnvironment;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)\includes;$(ProjectDir)\includes\BasicUsageEnvironment;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="tools\TCPServer.cpp" />
     <ClInclude Include="$(ProjectDir)\main.h" />
     <ClCompile Include="$(ProjectDir)\tools\tinythread.cpp" />
     <ClInclude Include="$(ProjectDir)\tools\tinythread.h" />
@@ -287,6 +288,7 @@
     <ClInclude Include="$(ProjectDir)\tools\encoder.hpp" />
     <ClInclude Include="$(ProjectDir)\tools\ScreenSource.hpp" />
     <ClInclude Include="$(ProjectDir)\tools\RTSPServer.hpp" />
+    <ClInclude Include="tools\TCPServer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

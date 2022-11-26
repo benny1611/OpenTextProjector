@@ -10,6 +10,7 @@
     <ClCompile Include="$(ProjectDir)\tools\base64.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tools\TCPServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(ProjectDir)\main.h">
@@ -33,6 +34,7 @@
     <ClInclude Include="$(ProjectDir)\tools\RTSPServer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="tools\TCPServer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

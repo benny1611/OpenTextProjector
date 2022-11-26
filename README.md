@@ -70,6 +70,8 @@ Here's a JSON object example:
 - [cpp-base64](https://github.com/ReneNyffenegger/cpp-base64)
 - [glew](https://github.com/nigels-com/glew)
 - [glfw](https://www.glfw.org/)
+- [asio](https://think-async.com/Asio/)
+- [x264](https://www.videolan.org/developers/x264.html)
 
 ## License
 

@@ -63,18 +63,15 @@ private:
         if (fPlayTimePerFrame > 0 && fPreferredFrameSize > 0) {
             if (fPresentationTime.tv_sec == 0 && fPresentationTime.tv_usec == 0) {
                 gettimeofday(&fPresentationTime, nullptr);
-                printf("Here(1): %d, %d\n", fPresentationTime.tv_sec, fPresentationTime.tv_usec);
             }
             else {
                 unsigned uSeconds	= fPresentationTime.tv_usec + fLastPlayTime;
                 fPresentationTime.tv_sec += uSeconds / 1000000;
                 fPresentationTime.tv_usec = uSeconds % 1000000;
-                printf("Here(2): %d, %d\n", fPresentationTime.tv_sec, fPresentationTime.tv_usec);
             }
 
             fLastPlayTime = (fPlayTimePerFrame*fFrameSize)/fPreferredFrameSize;
             fDurationInMicroseconds = fLastPlayTime;
-            printf("Here(3): %d, %d, %d\n", fLastPlayTime, fFrameSize, fPreferredFrameSize);
         }
         else {
             gettimeofday(&fPresentationTime, nullptr);
@@ -88,11 +85,9 @@ private:
             if (newFrameSize > fMaxSize) {
                 fFrameSize = fMaxSize;
                 fNumTruncatedBytes = newFrameSize - fMaxSize;
-                //printf("Too big, cut: %d %d\n", newFrameSize, fMaxSize);
             }
             else {
                 fFrameSize = newFrameSize;
-                printf("Max size: %d & Frame size: %d, queue size: %d\n", fMaxSize, fFrameSize, m_buffer.size());
             }
 
             memcpy(fTo, m_nalToDeliver.p_payload, m_nalToDeliver.i_payload);
