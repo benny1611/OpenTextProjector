@@ -1,7 +1,4 @@
-#include <GL/glew.h>
 #include <asio/asio.hpp>
-#include "RTSPServer.hpp"
-#include "tinythread.h"
 #include "json.hpp"
 #include "../main.h"
 

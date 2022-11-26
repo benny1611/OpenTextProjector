@@ -1,12 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _USE_MATH_DEFINES
 
-#include <GL/glew.h>
-#define GLFW_DLL
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/ext.hpp>
 #include <freetype/ft2build.h>
 #include FT_FREETYPE_H
 
@@ -51,7 +45,6 @@ GLfloat TEXT_X;
 GLfloat TEXT_Y;
 GLuint TEXT_WIDTH;
 GLuint TEXT_HEIGHT;
-GLuint PADDING;
 Monitor *CHOICE_MONITORS;
 GLFWwindow* WINDOW;
 bool monitor_event = false;
@@ -88,6 +81,7 @@ float RED = 1.0;
 float GREEN = 1.0;
 float BLUE = 1.0;
 GLfloat TEXT_SCALE;
+GLuint PADDING;
 int FONT_SIZE;
 int TOTAL_MONITORS;
 int MONITOR_TO_CHANGE;

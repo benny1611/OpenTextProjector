@@ -51,6 +51,16 @@ void listen_for_connection(void* aArg) {
                 catch (exception& e) {
                     cerr << "Error while trying to get the font: " << e.what() << endl;
                 }
+                // get the padding
+                try {
+                    int padding = command["padding"].get<int>();
+                    text_mutex.lock();
+                    PADDING = padding;
+                    text_mutex.unlock();
+                }
+                catch (exception& e) {
+                    cerr << "Error while trying to get the padding: " << e.what() << endl;
+                }
                 // get the font color
                 try {
                     vector<float> color = command["font_color"].get<vector<float>>();

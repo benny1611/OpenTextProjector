@@ -3,7 +3,7 @@
 
 #include <GL/glew.h>
 #define GLFW_DLL
-#include<GLFW/glfw3.h>
+#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/ext.hpp>
@@ -35,6 +35,7 @@ extern int FONT_SIZE;
 extern int TOTAL_MONITORS;
 extern int MONITOR_TO_CHANGE;
 extern GLfloat TEXT_SCALE;
+extern GLuint PADDING;
 extern OTPRTSPServer* rtspServer;
 extern std::string fontPath;
 
