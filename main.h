@@ -4,9 +4,7 @@
 #include <GL/glew.h>
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
 #include <glm/mat4x4.hpp>
-#include <glm/ext.hpp>
 
 #include "tools/tinythread.h"
 #include "tools/RTSPServer.hpp"

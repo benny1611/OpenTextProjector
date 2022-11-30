@@ -106,7 +106,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)\includes\BasicUsageEnvironment\include;$(ProjectDir)\includes\UsageEnvironment\include;$(ProjectDir)\includes\groupsock\include;$(ProjectDir)\includes\liveMedia\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\includes\BasicUsageEnvironment;$(ProjectDir)\includes\UsageEnvironment\include;$(ProjectDir)\includes\groupsock;$(ProjectDir)\includes\liveMedia;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>

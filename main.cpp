@@ -10,13 +10,14 @@
 #include <map>
 #include <iterator>
 #include <fstream>
-#include <asio/asio.hpp>
+#include <asio/ip/tcp.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "main.h"
 #include "tools/json.hpp"
 #include "tools/base64.h"
 #include "tools/ScreenSource.hpp"
 #include "tools/TCPServer.h"
-#include <liveMedia.hh>
 #include <BasicUsageEnvironment.hh>
 #include <GroupsockHelper.hh>
 
@@ -38,7 +39,6 @@ void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,GLenu
 	printf("%d: %s, severity: %d\n",id, msg, severity);
 }
 void log(string message);
-
 
 Monitor DEFAULT_MONITOR;
 GLfloat TEXT_X;
@@ -89,7 +89,6 @@ OTPRTSPServer* rtspServer;
 string fontPath = "./fonts/";
 
 int main(int argc, char* argv[]) {
-
     /*string pathTmp = argv[0];
     string dirPath = pathTmp.substr(0, pathTmp.find_last_of("\\/"));
     cout << "Here is the pwd: " << dirPath << endl;*/

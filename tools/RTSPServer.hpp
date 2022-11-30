@@ -2,14 +2,18 @@
 #define OPENTEXTPROJECTOR_RTSP
 
 #include "BasicUsageEnvironment.hh"
-#include "liveMedia.hh"
 #include "GroupsockHelper.hh"
+#include "MediaSink.hh"
+#include "H264VideoRTPSink.hh"
+#include "RTCP.hh"
+#include "RTSPServer.hh"
+#include "PassiveServerMediaSubsession.hh"
+#include "H264VideoStreamFramer.hh"
 #include "ScreenSource.hpp"
 
 extern "C" {
     #include "x264/x264.h"
 }
-
 
 class OTPRTSPServer {
 

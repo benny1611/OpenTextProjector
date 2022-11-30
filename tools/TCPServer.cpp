@@ -1,6 +1,9 @@
 ﻿#include "TCPServer.h"
 #include "base64.h"
 #include <fstream>
+#include <asio/streambuf.hpp>
+#include <asio/read_until.hpp>
+#include <asio/write.hpp>
 
 using namespace std;
 
