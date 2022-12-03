@@ -1,6 +1,6 @@
-#version 460 core
-layout (location = 0) in vec4 vertex; // <vec2 pos, vec2 tex>
-layout (location = 1) uniform mat4 projection;
+#version 120
+in vec4 vertex; // <vec2 pos, vec2 tex>
+uniform mat4 projection;
 
 out vec2 TexCoords;
 

@@ -1,11 +1,11 @@
-#version 460 core
+#version 120
 in vec2 TexCoords;
 out vec4 color;
 
-layout (binding = 0) uniform sampler2D text;
-layout (location = 6) uniform vec3 textColor;
+uniform sampler2D text;
+uniform vec3 textColor;
 
 void main()
 {    
-	color = vec4(textColor, 1.0) * texture(text, TexCoords).r;
+	color = vec4(textColor, 1.0) * texture2D(text, TexCoords).r;
 }  

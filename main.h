@@ -1,7 +1,7 @@
 #ifndef MAIN_H_INCLUDED
 #define MAIN_H_INCLUDED
 
-#include <GL/glew.h>
+#include "tools/TextRenderer/TextRenderer.h"
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
 #include <glm/mat4x4.hpp>
@@ -25,7 +25,7 @@ extern bool readyToSetFrame;
 
 // variables
 extern char* FONT;
-extern std::list<std::wstring> TEXT;
+extern std::vector<std::wstring> TEXT;
 extern float RED;
 extern float GREEN;
 extern float BLUE;

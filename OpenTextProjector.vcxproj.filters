@@ -11,6 +11,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="tools\TCPServer.cpp" />
+    <ClCompile Include="tools\TextRenderer\TextRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(ProjectDir)\main.h">
@@ -35,6 +36,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="tools\TCPServer.h" />
+    <ClInclude Include="tools\TextRenderer\TextRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

@@ -106,7 +106,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir)\includes\BasicUsageEnvironment;$(ProjectDir)\includes\UsageEnvironment;$(ProjectDir)\includes\groupsock;$(ProjectDir)\includes\liveMedia;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)includes\BasicUsageEnvironment;$(ProjectDir)includes\UsageEnvironment;$(ProjectDir)includes\groupsock;$(ProjectDir)includes\liveMedia;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -278,6 +278,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(ProjectDir)\includes;$(ProjectDir)\includes\BasicUsageEnvironment;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)\includes;$(ProjectDir)\includes\BasicUsageEnvironment;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="tools\TextRenderer\TextRenderer.cpp" />
     <ClCompile Include="tools\TCPServer.cpp" />
     <ClInclude Include="$(ProjectDir)\main.h" />
     <ClCompile Include="$(ProjectDir)\tools\tinythread.cpp" />
@@ -288,6 +289,7 @@
     <ClInclude Include="$(ProjectDir)\tools\encoder.hpp" />
     <ClInclude Include="$(ProjectDir)\tools\ScreenSource.hpp" />
     <ClInclude Include="$(ProjectDir)\tools\RTSPServer.hpp" />
+    <ClInclude Include="tools\TextRenderer\TextRenderer.h" />
     <ClInclude Include="tools\TCPServer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
