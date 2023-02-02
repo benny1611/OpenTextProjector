@@ -1,8 +1,8 @@
 #include <GL/glew.h>
 #include <string>
 #include <vector>
-namespace glfreetype {
 
+namespace glfreetype {
     // NEHE tutorial
 
     // This Holds All Of The Information Related To Any

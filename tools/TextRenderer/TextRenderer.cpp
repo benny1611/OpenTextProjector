@@ -14,6 +14,7 @@
 #include <vector>
 #include <locale>
 #include <codecvt>
+#include <map>
 
 // All ideas here ripped from a NEHE tutorial
 // http://nehe.gamedev.net/tutorial/freetype_fonts_in_opengl/24001/
@@ -22,7 +23,9 @@ namespace glfreetype {
     
     int numberOfCharacters = 512;
 
-    unsigned short* correctedString(std::wstring text, int& index, bool debug = false);
+    std::map<GLuint, int> texturesAndSizes; // textures with their respective sizes
+
+    unsigned short* correctedString(std::wstring text, int& index, int& withOfTheText, bool debug = false);
     
     // Gets the first power of 2 >= 
     // for the given int  
@@ -34,8 +37,8 @@ namespace glfreetype {
         return rval;
     }
 
-    FT_BitmapGlyph generateBitmapForFace(FT_Face face, GLuint ch)
-    {
+    FT_BitmapGlyph generateBitmapForFace(FT_Face face, GLuint ch) {
+
         // Load the character glyph.
         unsigned int index = FT_Get_Char_Index(face, ch);
         //std::cout << "Generating: " << ch << " " << (char)ch << " index: " << index << std::endl;
@@ -81,6 +84,8 @@ namespace glfreetype {
         // Get correct dimensions for bitmap
         int width = next_p2(bitmap.width);
         int height = next_p2(bitmap.rows);
+
+        texturesAndSizes.insert({ tex_base[ch], bitmap.width });
 
         // Use a vector to store texture data (better than a raw array).
         std::vector<GLubyte> expanded_data(2 * width * height, 0);
@@ -128,6 +133,8 @@ namespace glfreetype {
 
         // Move over for next character
         glTranslatef(face->glyph->advance.x >> 6, 0, 0);
+
+        //glBitmap(0, 0, 0, 0, face->glyph->advance.x >> 6, 0, NULL);
 
         // Finish The Display List
         glEndList();
@@ -181,8 +188,8 @@ namespace glfreetype {
     }
 
     void font_data::clean() {
-        glDeleteLists(list_base, 128);
-        glDeleteTextures(128, &textures.front());
+        glDeleteLists(list_base, 512);
+        glDeleteTextures(512, &textures.front());
     }
 
     // A Fairly Straightforward Function That Pushes
@@ -220,13 +227,6 @@ namespace glfreetype {
         float h = ft_font.h / .63f;
 
         // Split text into lines
-        /*std::stringstream ss(text);
-        std::string to;
-        std::vector<std::string> lines;
-        while (std::getline(ss, to, '\n')) {
-            lines.push_back(to);
-        }*/
-
         glPushAttrib(GL_LIST_BIT | GL_CURRENT_BIT | GL_ENABLE_BIT | GL_TRANSFORM_BIT);
         glMatrixMode(GL_MODELVIEW);
         glDisable(GL_LIGHTING);
@@ -247,24 +247,23 @@ namespace glfreetype {
         // Down By h. This Is Because When Each Character Is
         // Drawn It Modifies The Current Matrix So That The Next Character
         // Will Be Drawn Immediately After It. 
-        for (int i = 0;i < text.size();i++) {
+        for (int i = 0; i < text.size(); i++) {
+
+            int length;
+            int withOfTheText;
+            unsigned short* correctedChars = correctedString(text[i], length, withOfTheText);
+
             glPushMatrix();
             glLoadIdentity();
-            glTranslatef(x, y - h * i, 0);
+            glTranslatef(x - (withOfTheText/2), y - h * i, 0);
             glMultMatrixf(modelview_matrix);
 
             // The Commented Out Raster Position Stuff Can Be Useful If You Need To
             // Know The Length Of The Text That You Are Creating.
             // If You Decide To Use It Make Sure To Also Uncomment The glBitmap Command
             // In make_dlist().
-            // glRasterPos2f(0,0);
-            //std::cout << "Rendering: " << text[i].length() << " " << text[i].c_str() << " aka: " << wstringToString(text[i]) << std::endl;
-            int length;
-            unsigned short* correctedChars = correctedString(text[i], length);
             glCallLists(length, GL_UNSIGNED_SHORT, correctedChars);
-            // float rpos[4];
-            // glGetFloatv(GL_CURRENT_RASTER_POSITION ,rpos);
-            // float len=x-rpos[0]; (Assuming No Rotations Have Happend)
+
             glPopMatrix();
             delete[] correctedChars;
         }
@@ -274,9 +273,10 @@ namespace glfreetype {
         pop_projection_matrix();
     }
 
-    unsigned short* correctedString(std::wstring text, int& index, bool debug) {
+    unsigned short* correctedString(std::wstring text, int& index, int& withOfTheText, bool debug) {
         unsigned short* all_chars = new unsigned short[text.length()];
         index = 0;
+        withOfTheText = 0;
         if (debug) {
             std::cout << "Showing following characters:" << std::endl;
         }
@@ -289,9 +289,11 @@ namespace glfreetype {
                 switch (text[j + 1]) {
                 case 402:
                     all_chars[index] = 0x103;
+                    withOfTheText += texturesAndSizes.find(0x61)->second; // same width as "a"
                     break;
                 case 8218:
                     all_chars[index] = 0x102;
+                    withOfTheText += texturesAndSizes.find(0x41)->second; // same width as "A"
                     break;
                 }
                 if (skip) {
@@ -302,15 +304,19 @@ namespace glfreetype {
                 switch (text[j + 1]) {
                 case 8482:
                     all_chars[index] = 0x15F;
+                    withOfTheText += texturesAndSizes.find(0x73)->second; // same width as "s"
                     break;
                 case 8250:
                     all_chars[index] = 0x163;
+                    withOfTheText += texturesAndSizes.find(0x74)->second; // same width as "t"
                     break;
                 case 732:
                     all_chars[index] = 0x15E;
+                    withOfTheText += texturesAndSizes.find(0x53)->second; // same width as "S"
                     break;
                 case 353:
                     all_chars[index] = 0x162;
+                    withOfTheText += texturesAndSizes.find(0x54)->second; // same width as "T"
                     break;
                 default:
                     skip = false;
@@ -323,33 +329,43 @@ namespace glfreetype {
                 switch (text[j + 1]) {
                 case 174:
                     all_chars[index] = 0xEE;
+                    withOfTheText += texturesAndSizes.find(0x69)->second; // same width as "i"
                     break;
                 case 162:
                     all_chars[index] = 0xE2;
+                    withOfTheText += texturesAndSizes.find(0x61)->second; // same width as "a"
                     break;
                 case 8218:
                     all_chars[index] = 0xC2;
+                    withOfTheText += texturesAndSizes.find(0x41)->second; // same width as "A"
                     break;
                 case 381:
                     all_chars[index] = 0xCE;
+                    withOfTheText += texturesAndSizes.find(0x49)->second; // same width as "I"
                     break;
                 case 8211:
                     all_chars[index] = 0xD6;
+                    withOfTheText += texturesAndSizes.find(0x4F)->second; // same width as "O"
                     break;
                 case 182:
                     all_chars[index] = 0xF6;
+                    withOfTheText += texturesAndSizes.find(0x6F)->second; // same width as "o"
                     break;
                 case 8222:
                     all_chars[index] = 0xC4;
+                    withOfTheText += texturesAndSizes.find(0x41)->second; // same width as "A"
                     break;
                 case 164:
                     all_chars[index] = 0xE4;
+                    withOfTheText += texturesAndSizes.find(0x61)->second; // same width as "a"
                     break;
                 case 339:
                     all_chars[index] = 0xDC;
+                    withOfTheText += texturesAndSizes.find(0x55)->second; // same width as "U"
                     break;
                 case 188:
                     all_chars[index] = 0xFC;
+                    withOfTheText += texturesAndSizes.find(0x75)->second; // same width as "u"
                     break;
                 default:
                     skip = false;
@@ -360,6 +376,7 @@ namespace glfreetype {
             }
             else {
                 all_chars[index] = (unsigned short)text[j];
+                withOfTheText += texturesAndSizes.find(text[j])->second;
             }
             index++;
         }

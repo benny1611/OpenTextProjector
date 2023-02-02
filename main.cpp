@@ -181,8 +181,20 @@ int main(int argc, char* argv[]) {
         glPushMatrix();
         glLoadIdentity();
         glColor3ub(0xff, 0xff, 0xff);
-        glfreetype::print(the_font, 300, 400, TEXT);
+        glfreetype::print(the_font, DEFAULT_MONITOR.maxResolution.width/2, (DEFAULT_MONITOR.maxResolution.height / 2) + ((the_font.h * TEXT.size()) / 2), TEXT);
         glPopMatrix();
+
+        // lines that go through the middle of the screen to help with text centering
+        /*glBegin(GL_LINES);
+        glVertex2f(0.0, -1.0);
+        glVertex2f(0.0, 1.0);
+        glEnd();
+
+        glBegin(GL_LINES);
+        glVertex2f(-1.0, 0);
+        glVertex2f(1.0, 0);
+        glEnd();*/
+
         glfwSwapBuffers(WINDOW);
         glfwPollEvents();
         // Screenshot:
