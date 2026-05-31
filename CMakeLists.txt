@@ -1,6 +1,6 @@
 # Bumped to 3.21 to unlock the magical RUNTIME_DEPENDENCIES feature
 cmake_minimum_required(VERSION 3.21)
-project(SimpleTextProjector CXX)
+project(OpenTextProjector CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -112,8 +112,8 @@ endif()
 # Copy properties file for local debugging
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_CURRENT_SOURCE_DIR}/SimpleTextProjector.properties"
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/SimpleTextProjector.properties"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OpenTextProjector.properties"
+    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/OpenTextProjector.properties"
     COMMENT "Copying properties file to build directory..."
 )
 
@@ -129,7 +129,7 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 # Pack the properties file into the installer's bin folder
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/SimpleTextProjector.properties" 
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/OpenTextProjector.properties" 
         DESTINATION bin)
 
 # ---------------------------------------------------------
