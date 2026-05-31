@@ -36,3 +36,14 @@ std::string AuthService::loginUser(const std::string& username, const std::strin
     Poco::JWT::Signer signer(_config->jwtSecret);
     return signer.sign(token, Poco::JWT::Signer::ALGO_HS256);
 }
+
+bool AuthService::validateToken(const std::string& jwt) {
+    Poco::JWT::Signer signer(_config->jwtSecret);
+    try {
+        Poco::JWT::Token token = signer.verify(jwt);
+        return true;
+    }
+    catch (Poco::Exception& ex) {
+        return false;
+    }
+}
