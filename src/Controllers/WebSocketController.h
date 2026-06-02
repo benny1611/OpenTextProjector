@@ -1,18 +1,24 @@
 #pragma once
-#include "Poco/Net/HTTPRequestHandler.h"
+#include <Poco/Net/HTTPRequestHandler.h>
 #include "Poco/Net/HTTPServerRequest.h"
 #include "Poco/Net/HTTPServerResponse.h"
 #include "../Services/AuthService.h"
+#include "../Util/ThreadSafeQueue.h"
+#include "../Models/Command.h"
 #include <memory>
-#include <string>
 
 class WebSocketController : public Poco::Net::HTTPRequestHandler {
 public:
-    explicit WebSocketController(std::shared_ptr<AuthService> authService);
+    WebSocketController(
+        std::shared_ptr<AuthService> authService,
+        std::shared_ptr<ThreadSafeQueue<Command>> commandQueue
+    );
 
-    void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override;
+    void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response);
 
 private:
-    std::shared_ptr<AuthService> _authService; // Store as shared_ptr
-    std::string extractToken(const std::string& uri);
+    std::string extractToken(const std::string& uriString);
+
+    std::shared_ptr<AuthService> _authService;
+    std::shared_ptr<ThreadSafeQueue<Command>> _commandQueue;
 };

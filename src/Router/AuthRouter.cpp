@@ -23,7 +23,7 @@ Poco::Net::HTTPRequestHandler* AuthRouter::createRequestHandler(const Poco::Net:
     }
     else if (request.getMethod() == "GET") {
         if (path == "/api/ws") {
-            return new WebSocketController(_container->resolve<AuthService>());
+            return new WebSocketController(_container->resolve<AuthService>(), _container->resolve<ThreadSafeQueue<Command>>());
         }
     }
     return nullptr;

@@ -3,6 +3,10 @@
 #include "Core/AppConfig.h"
 #include "Repositories/UserRepository.h"
 #include "Services/AuthService.h"
+#include "Util/ThreadSafeQueue.h"
+#include "Models/Command.h"
+#include "Services/CommandProcessor.h"
+#include "Controllers/WebSocketController.h"
 
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SessionPool.h>
@@ -106,6 +110,15 @@ int main() {
         container->resolve<AppConfig>()
     );
     container->registerService(authService);
+
+    // 5. Create and Register the Shared Queue
+    auto commandQueue = std::make_shared<ThreadSafeQueue<Command>>();
+    container->registerService<ThreadSafeQueue<Command>>(commandQueue);
+
+    // 6. Create, Start, and Register the Worker Thread Service
+    auto commandProcessor = std::make_shared<CommandProcessor>(commandQueue);
+    commandProcessor->start();
+    container->registerService<CommandProcessor>(commandProcessor);
 
     // 5. Run Database Migrations
     runMigrations(dbPool);
