@@ -13,6 +13,7 @@
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Util/PropertyFileConfiguration.h>
 #include <Poco/Net/SSLManager.h>
+#include <Poco/Net/NetworkInterface.h>
 #include <Poco/AutoPtr.h>
 #include <Poco/File.h>
 #include <Poco/DirectoryIterator.h>
@@ -77,7 +78,7 @@ int main() {
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
 
-    // 1. Setup Environment
+    // Setup Environment
     Poco::Net::initializeSSL();
     Poco::Data::SQLite::Connector::registerConnector();
     
@@ -89,10 +90,10 @@ int main() {
         return 1;
     }
 
-    // 2. Setup DI Container
+    // Setup DI Container
     auto container = std::make_shared<DIContainer>();
 
-    // 3. Register Database & Config
+    // Register Database & Config
     auto dbPool = std::make_shared<Poco::Data::SessionPool>("SQLite", config->getString("db.connection_string"));
     container->registerService(dbPool);
 
@@ -101,7 +102,7 @@ int main() {
     appConfig->jwtExpHours = config->getInt("jwt.expiration_hours");
     container->registerService(appConfig);
 
-    // 4. Register Repositories and Services (Dependency Injection)
+    // Register Repositories and Services (Dependency Injection)
     auto userRepo = std::make_shared<UserRepository>(container->resolve<Poco::Data::SessionPool>());
     container->registerService(userRepo);
 
@@ -111,30 +112,57 @@ int main() {
     );
     container->registerService(authService);
 
-    // 5. Create and Register the Shared Queue
+    // Create and Register the Shared Queue
     auto commandQueue = std::make_shared<ThreadSafeQueue<Command>>();
     container->registerService<ThreadSafeQueue<Command>>(commandQueue);
 
-    // 6. Create, Start, and Register the Worker Thread Service
+    // Create, Start, and Register the Worker Thread Service
     auto commandProcessor = std::make_shared<CommandProcessor>(commandQueue);
     commandProcessor->start();
     container->registerService<CommandProcessor>(commandProcessor);
 
-    // 5. Run Database Migrations
+    // Run Database Migrations
     runMigrations(dbPool);
 
-    // 6. Start the Server
+    // Get the url to show
+    std::string url = "";
+    if (config->hasProperty("app.hostname")) {
+        url = config->getString("app.hostname", "");
+    }
+    
+    if (url.empty()) {
+        Poco::Net::NetworkInterface::Map interfaces = Poco::Net::NetworkInterface::map();
+        for (const auto& entry : interfaces) {
+            const Poco::Net::NetworkInterface& netInterface = entry.second;
+            if (netInterface.supportsIPv4() && !netInterface.isLoopback() && netInterface.isRunning()) {
+                url = netInterface.address().toString();
+                break;
+            }
+        }
+    }
+
+    bool useHttps = config->getBool("server.use_https", false);
+    if (useHttps && !url._Starts_with("https://")) {
+        url = "https://" + url;
+    }
+    else if(!useHttps && !url._Starts_with("http://")) {
+        url = "http://" + url;
+    }
+
+    std::cout << "URL: " << url << std::endl;
+
+    // Start the Server
     AuthServer apiServer(container, *config);
     apiServer.start();
     std::cout << "API Server running. Starting main task loop...\n";
 
-    // 7. Main Application Loop
+    // Main Application Loop
     while (g_appRunning) {
         // --> YOUR PRIMARY WORKLOAD HERE <--
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    // 8. Graceful Teardown
+    // Graceful Teardown
     std::cout << "Shutting down...\n";
     apiServer.stop();
     Poco::Data::SQLite::Connector::unregisterConnector();
