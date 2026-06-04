@@ -1,0 +1,23 @@
+{
+  "name": "opentextprojector",
+  "version-string": "0.0.1",
+  "dependencies": [
+    "glfw3",
+    {
+      "name": "glad",
+      "features": [
+        "gl-api-latest",
+        "loader"
+      ]
+    },
+    {
+      "name": "ffmpeg",
+      "features": [
+        "avcodec",
+        "avformat",
+        "swscale"
+      ]
+    }
+  ],
+  "builtin-baseline": "cea592f4772491abdb7c483387a59ea89889f4be"
+}
