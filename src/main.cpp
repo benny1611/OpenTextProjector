@@ -7,6 +7,7 @@
 #include "Models/Command.h"
 #include "Services/CommandProcessor.h"
 #include "Controllers/WebSocketController.h"
+#include "UI/AppWindow.h"
 
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SessionPool.h>
@@ -20,6 +21,15 @@
 #include <Poco/FileStream.h>
 #include <Poco/StreamCopier.h>
 #include <Poco/Exception.h>
+#include <Poco/FormattingChannel.h>
+#include <Poco/PatternFormatter.h>
+#include <Poco/Logger.h>
+#include <Poco/Message.h>
+#include <Poco/ConsoleChannel.h>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <ft2build.h>
+#include <freetype/freetype.h>
 
 #include <iostream>
 #include <csignal>
@@ -29,6 +39,8 @@
 #include <algorithm>
 
 std::atomic<bool> g_appRunning{true};
+
+static void glfw_error_callback(int error, const char* description);
 
 void handleSignal(int) {
     g_appRunning = false;
@@ -78,6 +90,13 @@ int main() {
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
 
+    // set up two channel chains - one to the
+    // console and the other one to a log file.
+    Poco::FormattingChannel* pFCConsole = new Poco::FormattingChannel(new Poco::PatternFormatter("[%O] %s: %p: %t"));
+    pFCConsole->setChannel(new Poco::ConsoleChannel);
+    pFCConsole->open();
+    Poco::Logger& consoleLogger = Poco::Logger::create("OpenTextProjector.main", pFCConsole, Poco::Message::PRIO_INFORMATION);
+
     // Setup Environment
     Poco::Net::initializeSSL();
     Poco::Data::SQLite::Connector::registerConnector();
@@ -86,7 +105,7 @@ int main() {
     try {
         config = new Poco::Util::PropertyFileConfiguration("OpenTextProjector.properties");
     } catch (...) {
-        std::cerr << "OpenTextProjector.properties not found!\n";
+        consoleLogger.error("OpenTextProjector.properties not found!");
         return 1;
     }
 
@@ -149,24 +168,60 @@ int main() {
         url = "http://" + url;
     }
 
-    std::cout << "URL: " << url << std::endl;
+    consoleLogger.information("URL: " + url);
 
     // Start the Server
     AuthServer apiServer(container, *config);
     apiServer.start();
-    std::cout << "API Server running. Starting main task loop...\n";
+    consoleLogger.information("API Server running. Starting main task loop...");
+
+    // Initialize GLFW
+    glfwSetErrorCallback(glfw_error_callback);
+    int err = glfwInit();
+    if (err != GLFW_TRUE) {
+        consoleLogger.error("GLFW init failed!");
+        exit(1);
+    }
+
+    // Check if we should show the UI
+    bool showHelp = config->getBool("app.showhelp", true);
+    AppWindow ui("OpenTextProjector Help", url, config, "OpenTextProjector.properties");
+    if (showHelp) {
+        // Pass the actual file path so the window can update it later
+        if (!ui.init()) {
+            consoleLogger.error("Failed to initialize UI!");
+            glfwTerminate();
+            exit(1);
+        }
+    }
 
     // Main Application Loop
     while (g_appRunning) {
-        // --> YOUR PRIMARY WORKLOAD HERE <--
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        glfwPollEvents();
+
+        if (showHelp) {
+            if (!ui.shouldClose()) {
+                ui.draw();
+                glfwMakeContextCurrent(ui.getWindow());
+                glfwSwapBuffers(ui.getWindow());
+            } else {
+                showHelp = false;
+                ui.~AppWindow();
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
     // Graceful Teardown
-    std::cout << "Shutting down...\n";
+    consoleLogger.information("Shutting down...");
     apiServer.stop();
     Poco::Data::SQLite::Connector::unregisterConnector();
     Poco::Net::uninitializeSSL();
 
     return 0;
+}
+
+
+static void glfw_error_callback(int error, const char* description) {
+    fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }

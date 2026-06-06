@@ -77,6 +77,31 @@ set(NO_TESTS ON CACHE BOOL "" FORCE)
 set(NO_EXAMPLES ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(datachannel)
 
+# =========================================================
+# 1.5. LOCAL IMGUI TARGET DEFINITION (OpenGL 2)
+# =========================================================
+set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/imgui")
+
+add_library(imgui STATIC
+    "${IMGUI_DIR}/imgui.cpp"
+    "${IMGUI_DIR}/imgui_draw.cpp"
+    "${IMGUI_DIR}/imgui_tables.cpp"
+    "${IMGUI_DIR}/imgui_widgets.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_glfw.cpp"
+    "${IMGUI_DIR}/backends/imgui_impl_opengl2.cpp"
+)
+
+# PUBLIC includes make sure your main executable automatically 
+# finds headers like <imgui.h> when it links against 'imgui'
+target_include_directories(imgui PUBLIC 
+    "${IMGUI_DIR}"
+    "${IMGUI_DIR}/backends"
+)
+
+# ImGui backends rely on GLFW and OpenGL functionalities
+target_link_libraries(imgui PRIVATE glfw OpenGL::GL)
+
+
 # ---------------------------------------------------------
 # 2. EXECUTABLE & LINKING
 # ---------------------------------------------------------
@@ -95,6 +120,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     freetype
     glad::glad
+    imgui
     
     # Media Streaming & WebRTC
     datachannel
@@ -138,8 +164,16 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying properties file to build directory..."
 )
 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources"
+    COMMENT "Copying resources folder to build directory..."
+)
+
 install(TARGETS ${PROJECT_NAME} DESTINATION bin RUNTIME_DEPENDENCIES DESTINATION bin)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/OpenTextProjector.properties" DESTINATION bin)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources" DESTINATION bin)
 
 # CPack Configurations
 set(CPACK_PACKAGE_NAME "OpenTextProjector")
