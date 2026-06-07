@@ -12,6 +12,12 @@ AppWindow::AppWindow(const std::string& title, const std::string& url, const Poc
 }
 
 AppWindow::~AppWindow() {
+    if (!m_destroyed) {
+        destroy();
+    }
+}
+
+void AppWindow::destroy() {
     // ImGui Cleanup
     ImGui_ImplOpenGL2_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -23,13 +29,16 @@ AppWindow::~AppWindow() {
     if (m_window) {
         glfwDestroyWindow(m_window);
     }
+    m_destroyed = true;
 }
 
-bool AppWindow::init() {
+bool AppWindow::init(MonitorInfo monitorInfo) {
     m_window = glfwCreateWindow(800, 600, m_title.c_str(), nullptr, nullptr);
     if (!m_window) return false;
 
     glfwMakeContextCurrent(m_window);
+
+    glfwSetWindowPos(m_window, monitorInfo.xpos + 100, monitorInfo.ypos + 100);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return false;
 

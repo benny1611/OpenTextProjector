@@ -11,13 +11,16 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl2.h>
 
+#include "../System/MonitorManager.h"
+
 class AppWindow {
 public:
     AppWindow(const std::string& title, const std::string& url, const Poco::AutoPtr<Poco::Util::PropertyFileConfiguration> config, const std::string& configFilePath);
     ~AppWindow();
 
-    bool init();
+    bool init(MonitorInfo monitorInfo);
     void draw();
+    void destroy();
     bool shouldClose() const;
     GLFWwindow* getWindow();
 
@@ -36,6 +39,8 @@ private:
     // UI State
     bool m_neverShowAgain;
     bool m_closeRequested;
+
+    bool m_destroyed = false;
 
     // Helper methods
     GLuint generateQrTexture(const char* text, int scale = 10);

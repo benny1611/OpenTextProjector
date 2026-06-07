@@ -8,6 +8,7 @@
 #include "Services/CommandProcessor.h"
 #include "Controllers/WebSocketController.h"
 #include "UI/AppWindow.h"
+#include "System/MonitorManager.h"
 
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SessionPool.h>
@@ -183,30 +184,63 @@ int main() {
         exit(1);
     }
 
+    auto monitorManager = std::make_shared<MonitorManager>();
+    monitorManager->init();
+    container->registerService(monitorManager);
+
     // Check if we should show the UI
     bool showHelp = config->getBool("app.showhelp", true);
     AppWindow ui("OpenTextProjector Help", url, config, "OpenTextProjector.properties");
     if (showHelp) {
-        // Pass the actual file path so the window can update it later
-        if (!ui.init()) {
+        std::vector<MonitorInfo> monitors = monitorManager->getMonitors();
+        MonitorInfo helpUIMonitorInfo = monitorManager->getActiveMonitor();
+        // Show the help UI on a separate monitor if possile
+        for (const auto& mon : monitors) {
+            if (mon != helpUIMonitorInfo) {
+                helpUIMonitorInfo = mon;
+                break;
+            }
+        }
+        if (!ui.init(helpUIMonitorInfo)) {
             consoleLogger.error("Failed to initialize UI!");
             glfwTerminate();
             exit(1);
         }
     }
 
+    // Get the main window ready
+    glfwWindowHint(GLFW_AUTO_ICONIFY, GL_FALSE);
+    MonitorInfo primary = monitorManager->getActiveMonitor();
+
+    GLFWwindow* window = glfwCreateWindow(primary.width, primary.height, "OpenTextProjector", primary.handle, NULL);
+
+    if (window == NULL) {
+        glfwTerminate();
+        consoleLogger.error("Could not create the GLFW window");
+        exit(1);
+    }
+
     // Main Application Loop
-    while (g_appRunning) {
+    while (g_appRunning && !glfwWindowShouldClose(window)) {
+        MonitorInfo activeMonitor = monitorManager->getActiveMonitor();
+        if (activeMonitor.handle != glfwGetWindowMonitor(window)) {
+            glfwSetWindowMonitor(window, activeMonitor.handle, 0, 0, activeMonitor.width, activeMonitor.height, activeMonitor.refreshRate);
+        }
         glfwPollEvents();
+        glfwMakeContextCurrent(window);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glfwSwapBuffers(window);
 
         if (showHelp) {
             if (!ui.shouldClose()) {
-                ui.draw();
                 glfwMakeContextCurrent(ui.getWindow());
+                ui.draw();
                 glfwSwapBuffers(ui.getWindow());
-            } else {
+            }
+            else {
                 showHelp = false;
-                ui.~AppWindow();
+                ui.destroy();
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
