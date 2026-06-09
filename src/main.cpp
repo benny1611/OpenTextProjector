@@ -9,6 +9,7 @@
 #include "Controllers/WebSocketController.h"
 #include "UI/AppWindow.h"
 #include "System/MonitorManager.h"
+#include "System/TextManager.h"
 
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SessionPool.h>
@@ -220,6 +221,15 @@ int main() {
         exit(1);
     }
 
+    // Create the text manager
+    auto textManager = std::make_shared<TextManager>();
+    container->registerService<TextManager>(textManager);
+    
+    int id = textManager->createTextBox(200, 200, 200, 200);
+    textManager->setText(id, "test!!");
+    textManager->setAlignment(id, TextAlignment::Right);
+    textManager->setDebugMode(id, true);
+
     // Main Application Loop
     while (g_appRunning && !glfwWindowShouldClose(window)) {
         MonitorInfo activeMonitor = monitorManager->getActiveMonitor();
@@ -230,6 +240,9 @@ int main() {
         glfwMakeContextCurrent(window);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        textManager->renderAll();
+
         glfwSwapBuffers(window);
 
         if (showHelp) {

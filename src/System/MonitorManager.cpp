@@ -2,8 +2,6 @@
 #include <iostream>
 
 // GLFW uses a C-style callback, so we need a bridge to route it to our instance.
-// Since you use a DI container, you could also resolve it here if you keep the DI container global,
-// but a static pointer is a simple way to bridge C and C++ for this specific GLFW limitation.
 static MonitorManager* g_MonitorManagerInstance = nullptr;
 
 void glfw_monitor_callback(GLFWmonitor* monitor, int event) {
