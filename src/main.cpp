@@ -26,8 +26,9 @@
 #include <Poco/FormattingChannel.h>
 #include <Poco/PatternFormatter.h>
 #include <Poco/Logger.h>
-#include <Poco/Message.h>
 #include <Poco/ConsoleChannel.h>
+#include <Poco/FileChannel.h>
+#include <Poco/Message.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <ft2build.h>
@@ -49,7 +50,7 @@ void handleSignal(int) {
 }
 
 // Helper function to run hard-coded database migrations
-void runMigrations(std::shared_ptr<Poco::Data::SessionPool> pool) {
+void runMigrations(std::shared_ptr<Poco::Data::SessionPool> pool, Poco::Logger& logger) {
     // 1. Define your migrations in the order they should execute
     const std::vector<std::string> migrations = {
         // Migration 1: 01_init_users
@@ -78,26 +79,50 @@ void runMigrations(std::shared_ptr<Poco::Data::SessionPool> pool) {
         for (const auto& query : migrations) {
             // Poco::Data::Keywords::now forces the query to execute immediately
             session << query, Poco::Data::Keywords::now;
-            std::cout << "Executed Migration Step #" << step++ << "\n";
+            logger.information("Executed Migration Step #" + std::to_string(step));
+            step++;
         }
     } 
     catch (const Poco::Exception& ex) {
-        // It is highly recommended to catch Poco exceptions here 
-        // so you know exactly why a SQL statement failed!
-        std::cerr << "Migration failed: " << ex.displayText() << "\n";
+        logger.fatal("Migration failed: " + ex.displayText());
     }
+}
+
+void initializeLogging() {
+    Poco::AutoPtr<Poco::PatternFormatter> pFormatter(
+        new Poco::PatternFormatter("%Y-%m-%d %H:%M:%S.%i [%p] %s: %t")
+    );
+    Poco::AutoPtr<Poco::FormattingChannel> pFC(new Poco::FormattingChannel(pFormatter));
+
+#ifndef NDEBUG
+    Poco::AutoPtr<Poco::ColorConsoleChannel> pConsoleChannel(new Poco::ColorConsoleChannel);
+    pConsoleChannel->setProperty("traceColor", "darkGray");
+    pConsoleChannel->setProperty("debugColor", "gray");
+    pConsoleChannel->setProperty("informationColor", "white");
+    pConsoleChannel->setProperty("warningColor", "yellow");
+    pConsoleChannel->setProperty("errorColor", "red");
+    pConsoleChannel->setProperty("fatalColor", "cyan");
+    pFC->setChannel(pConsoleChannel);
+#else
+    Poco::AutoPtr<Poco::FileChannel> pFileChannel(new Poco::FileChannel("log.txt"));
+    pFileChannel->setProperty("rotation", "5 M");
+    pFileChannel->setProperty("archive", "timestamp");
+    pFC->setChannel(pFileChannel);
+#endif
+
+    pFC->open();
+
+    // Attach this setup to the ROOT logger
+    Poco::Logger::root().setChannel(pFC);
+    Poco::Logger::root().setLevel(Poco::Message::PRIO_INFORMATION);
 }
 
 int main() {
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
 
-    // set up two channel chains - one to the
-    // console and the other one to a log file.
-    Poco::FormattingChannel* pFCConsole = new Poco::FormattingChannel(new Poco::PatternFormatter("[%O] %s: %p: %t"));
-    pFCConsole->setChannel(new Poco::ConsoleChannel);
-    pFCConsole->open();
-    Poco::Logger& consoleLogger = Poco::Logger::create("OpenTextProjector.main", pFCConsole, Poco::Message::PRIO_INFORMATION);
+    initializeLogging();
+    Poco::Logger& logger = Poco::Logger::get("main");
 
     // Setup Environment
     Poco::Net::initializeSSL();
@@ -107,7 +132,7 @@ int main() {
     try {
         config = new Poco::Util::PropertyFileConfiguration("OpenTextProjector.properties");
     } catch (...) {
-        consoleLogger.error("OpenTextProjector.properties not found!");
+        logger.error("OpenTextProjector.properties not found!");
         return 1;
     }
 
@@ -138,12 +163,12 @@ int main() {
     container->registerService<ThreadSafeQueue<Command>>(commandQueue);
 
     // Create, Start, and Register the Worker Thread Service
-    auto commandProcessor = std::make_shared<CommandProcessor>(commandQueue);
+    auto commandProcessor = std::make_shared<CommandProcessor>(commandQueue, container);
     commandProcessor->start();
     container->registerService<CommandProcessor>(commandProcessor);
 
     // Run Database Migrations
-    runMigrations(dbPool);
+    runMigrations(dbPool, logger);
 
     // Get the url to show
     std::string url = "";
@@ -170,18 +195,18 @@ int main() {
         url = "http://" + url;
     }
 
-    consoleLogger.information("URL: " + url);
+    logger.information("URL: " + url);
 
     // Start the Server
     AuthServer apiServer(container, *config);
     apiServer.start();
-    consoleLogger.information("API Server running. Starting main task loop...");
+    logger.information("API Server running. Starting main task loop...");
 
     // Initialize GLFW
     glfwSetErrorCallback(glfw_error_callback);
     int err = glfwInit();
     if (err != GLFW_TRUE) {
-        consoleLogger.error("GLFW init failed!");
+        logger.error("GLFW init failed!");
         exit(1);
     }
 
@@ -203,7 +228,7 @@ int main() {
             }
         }
         if (!ui.init(helpUIMonitorInfo)) {
-            consoleLogger.error("Failed to initialize UI!");
+            logger.error("Failed to initialize UI!");
             glfwTerminate();
             exit(1);
         }
@@ -217,7 +242,7 @@ int main() {
 
     if (window == NULL) {
         glfwTerminate();
-        consoleLogger.error("Could not create the GLFW window");
+        logger.error("Could not create the GLFW window");
         exit(1);
     }
 
@@ -260,7 +285,7 @@ int main() {
     }
 
     // Graceful Teardown
-    consoleLogger.information("Shutting down...");
+    logger.information("Shutting down...");
     apiServer.stop();
     Poco::Data::SQLite::Connector::unregisterConnector();
     Poco::Net::uninitializeSSL();

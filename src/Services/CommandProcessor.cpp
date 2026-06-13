@@ -2,8 +2,8 @@
 #include "Poco/JSON/Array.h"
 #include <iostream>
 
-CommandProcessor::CommandProcessor(std::shared_ptr<ThreadSafeQueue<Command>> commandQueue)
-    : _commandQueue(commandQueue), _isRunning(false) {
+CommandProcessor::CommandProcessor(std::shared_ptr<ThreadSafeQueue<Command>> commandQueue, std::shared_ptr<DIContainer> diContainer)
+    : _commandQueue(commandQueue), _isRunning(false), _diContainer(diContainer), _logger(Poco::Logger::get("CommandProcessor")) {
 }
 
 CommandProcessor::~CommandProcessor() {
@@ -14,7 +14,7 @@ void CommandProcessor::start() {
     if (_isRunning) return;
     _isRunning = true;
     _workerThread = std::thread(&CommandProcessor::processLoop, this);
-    std::cout << "[CommandProcessor] Background processing thread started." << std::endl;
+    _logger.information("Background processing thread started.");
 }
 
 void CommandProcessor::stop() {
@@ -27,7 +27,7 @@ void CommandProcessor::stop() {
     if (_workerThread.joinable()) {
         _workerThread.join();
     }
-    std::cout << "[CommandProcessor] Background processing thread stopped." << std::endl;
+    _logger.information("Background processing thread stopped.");
 }
 
 void CommandProcessor::processLoop() {
@@ -46,6 +46,7 @@ void CommandProcessor::processLoop() {
 void CommandProcessor::applyCommand(const Command& cmd) {
     auto data = cmd.payload;
     if (!data) return;
+    if (!allManagersPresent()) return;
 
     if (data->has("text")) {
         std::string text = data->getValue<std::string>("text");
@@ -71,4 +72,19 @@ void CommandProcessor::applyCommand(const Command& cmd) {
             std::cerr << "Failed to parse color array: " << e.displayText() << std::endl;
         }
     }
+}
+
+bool CommandProcessor::allManagersPresent() {
+    bool result = true;
+
+    if (_textManager == nullptr) {
+        try {
+            _textManager = _diContainer->resolve<TextManager>();
+        }
+        catch (std::runtime_error e) {
+            result = false;
+        }
+    }
+
+    return result;
 }

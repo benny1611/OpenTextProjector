@@ -18,17 +18,28 @@ AppWindow::~AppWindow() {
 }
 
 void AppWindow::destroy() {
-    // ImGui Cleanup
+    //Make this window's context current before deleting OpenGL resources!
+    if (m_window) {
+        glfwMakeContextCurrent(m_window);
+    }
+
+    //ImGui Cleanup
     ImGui_ImplOpenGL2_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    //Delete custom textures
     if (m_qrTexture != 0) {
         glDeleteTextures(1, &m_qrTexture);
+        m_qrTexture = 0; // Good practice to zero out
     }
+
+    //Destroy the GLFW window
     if (m_window) {
         glfwDestroyWindow(m_window);
+        m_window = nullptr;
     }
+
     m_destroyed = true;
 }
 
