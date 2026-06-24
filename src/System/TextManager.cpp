@@ -46,7 +46,11 @@ void TextManager::removeTextBox(int id) {
 // Thread-safe command routing endpoints
 void TextManager::setText(int id, const std::string& text) {
     std::lock_guard<std::mutex> lock(managerMutex);
-    if (textRenderers.find(id) != textRenderers.end()) textRenderers[id]->setText(text);
+    if (textRenderers.find(id) != textRenderers.end()) {
+        if (textRenderers[id]->getText() != text) {
+            textRenderers[id]->setText(text);
+        }
+    }
 }
 
 void TextManager::setBoxDimensions(int id, float x, float y, float width, float height) {
@@ -54,16 +58,32 @@ void TextManager::setBoxDimensions(int id, float x, float y, float width, float 
     if (textRenderers.find(id) != textRenderers.end()) textRenderers[id]->setBox(x, y, width, height);
 }
 
-void TextManager::setColor(int id, float r, float g, float b, float a) {
-    std::lock_guard<std::mutex> lock(managerMutex);
-    if (textRenderers.find(id) != textRenderers.end()) textRenderers[id]->setColor(r, g, b, a);
-}
-
-void TextManager::setFontConfiguration(int id, const std::string& fontPath, float desiredSize, float decreaseStep) {
+void TextManager::setFontColor(int id, float r, float g, float b, float a) {
     std::lock_guard<std::mutex> lock(managerMutex);
     if (textRenderers.find(id) != textRenderers.end()) {
-        textRenderers[id]->setFontPath(fontPath);
-        textRenderers[id]->setFontSize(desiredSize, decreaseStep);
+        Color c = textRenderers[id]->getColor();
+        if (c.r != r || c.g != g || c.b != b || c.a != a) {
+            textRenderers[id]->setColor(r, g, b, a);
+        }
+    }
+}
+
+void TextManager::setFont(int id, const std::string& fontPath) {
+    std::lock_guard<std::mutex> lock(managerMutex);
+    if (textRenderers.find(id) != textRenderers.end()) {
+        std::string currentFont = textRenderers[id]->getFontPath();
+        if (currentFont != fontPath) {
+            textRenderers[id]->setFontPath(fontPath);
+        }
+    }
+}
+
+void TextManager::setFontSize(int id, float desiredSize, float decreaseStep) {
+    std::lock_guard<std::mutex> lock(managerMutex);
+    if (textRenderers.find(id) != textRenderers.end()) {
+        if (textRenderers[id]->getFontSize() != desiredSize) {
+            textRenderers[id]->setFontSize(desiredSize, decreaseStep);
+        }
     }
 }
 
@@ -84,12 +104,27 @@ void TextManager::setAlignment(int id, TextAlignment alignment) {
 
 void TextManager::setZIndex(int id, int zIndex) {
     std::lock_guard<std::mutex> lock(managerMutex);
-    if (textRenderers.find(id) != textRenderers.end()) textRenderers[id]->setZIndex(zIndex);
+    if (textRenderers.find(id) != textRenderers.end()) {
+        int currentZIndex = textRenderers[id]->getZIndex();
+        if (currentZIndex != zIndex) {
+            textRenderers[id]->setZIndex(zIndex);
+        }
+    }
 }
 
 void TextManager::setDebugMode(int id, bool showDebug) {
     std::lock_guard<std::mutex> lock(managerMutex);
-    if (textRenderers.find(id) != textRenderers.end()) textRenderers[id]->setDebugLines(showDebug);
+    if (textRenderers.find(id) != textRenderers.end()) {
+        bool debug = textRenderers[id]->getDebugLines();
+        if (debug != showDebug) {
+            textRenderers[id]->setDebugLines(showDebug);
+        }
+    }
+}
+
+bool TextManager::hasId(int id) {
+    std::lock_guard<std::mutex> lock(managerMutex);
+    return textRenderers.find(id) != textRenderers.end();
 }
 
 void TextManager::renderAll() {

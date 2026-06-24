@@ -103,18 +103,19 @@ void initializeLogging() {
     pConsoleChannel->setProperty("errorColor", "red");
     pConsoleChannel->setProperty("fatalColor", "cyan");
     pFC->setChannel(pConsoleChannel);
+    Poco::Logger::root().setLevel(Poco::Message::PRIO_DEBUG);
 #else
     Poco::AutoPtr<Poco::FileChannel> pFileChannel(new Poco::FileChannel("log.txt"));
     pFileChannel->setProperty("rotation", "5 M");
     pFileChannel->setProperty("archive", "timestamp");
     pFC->setChannel(pFileChannel);
+    Poco::Logger::root().setLevel(Poco::Message::PRIO_INFORMATION);
 #endif
 
     pFC->open();
 
     // Attach this setup to the ROOT logger
     Poco::Logger::root().setChannel(pFC);
-    Poco::Logger::root().setLevel(Poco::Message::PRIO_INFORMATION);
 }
 
 int main() {

@@ -20,13 +20,15 @@ public:
     // Completely Thread-Safe Setter Facades for external pipeline workers
     void setText(int id, const std::string& text);
     void setBoxDimensions(int id, float x, float y, float width, float height);
-    void setColor(int id, float r, float g, float b, float a);
-    void setFontConfiguration(int id, const std::string& fontPath, float desiredSize, float decreaseStep = 2.0f);
+    void setFontColor(int id, float r, float g, float b, float a);
+    void setFont(int id, const std::string& fontPath);
+    void setFontSize(int id, float desiredSize, float decreaseStep = 2.0f);
     void setLineSpacing(int id, float spacing);
     void setWordWrap(int id, bool wrap);
     void setAlignment(int id, TextAlignment alignment);
     void setZIndex(int id, int zIndex);
     void setDebugMode(int id, bool showDebug);
+    bool hasId(int id);
 
     // Frame execution loop target. Must only run on the Main OpenGL Loop context.
     void renderAll();

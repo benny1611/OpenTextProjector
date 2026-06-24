@@ -13,6 +13,14 @@ enum class TextAlignment {
     Right
 };
 
+struct Color {
+    Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
+    float r;
+    float g;
+    float b;
+    float a;
+};
+
 struct Character {
     GLuint TextureID;   // Glyph texture coordinate pointer
     glm::ivec2 Size;    // Width and height metrics of glyph
@@ -51,10 +59,15 @@ public:
     void setZIndex(int z);
     void setDebugLines(bool drawDebug);
 
+
     // Accessors
     int getId() const { return id; }
     int getZIndex() const { return zIndex; }
+    float getFontSize() const { return desiredFontSize; }
+    bool getDebugLines() const { return drawDebugLines; }
     std::string getFontPath() const { return fontPath; }
+    std::string getText() const { return text; }
+    Color getColor() const { return Color(colorR, colorG, colorB, colorA); }
 
 private:
     int id;
