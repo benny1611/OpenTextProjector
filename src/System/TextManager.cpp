@@ -1,10 +1,12 @@
 #include "TextManager.h"
 #include <iostream>
 #include <algorithm>
+#include <filesystem>
 
-TextManager::TextManager() {
+TextManager::TextManager() : _logger(Poco::Logger::get("TextManager")) {
     if (FT_Init_FreeType(&ftLibrary)) {
-        std::cerr << "CRITICAL ERROR: Failed initialization of FreeType pipeline reference." << std::endl;
+        _logger.critical("CRITICAL ERROR: Failed initialization of FreeType pipeline reference.");
+        exit(1);
     }
 }
 
@@ -22,7 +24,7 @@ FT_Face TextManager::getFaceHandle(const std::string& fontPath) {
 
     FT_Face newFace;
     if (FT_New_Face(ftLibrary, fontPath.c_str(), 0, &newFace)) {
-        std::cerr << "ERROR: FreeType failed reading font system target: " << fontPath << std::endl;
+        _logger.error("ERROR: FreeType failed reading font system target: %s", fontPath);
         return nullptr;
     }
     loadedFaces[fontPath] = newFace;
@@ -35,6 +37,11 @@ int TextManager::createTextBox(float x, float y, float width, float height) {
     auto renderer = std::make_unique<TextRenderer>(id);
     renderer->setBox(x, y, width, height);
     textRenderers[id] = std::move(renderer);
+    _logger.debug("Created text box at x: %.2f, y: %.2f, width: %.2f, height: %.2f, id: %d", 
+        static_cast<double>(x), 
+        static_cast<double>(y), 
+        static_cast<double>(width), 
+        static_cast<double>(height), id);
     return id;
 }
 
@@ -49,6 +56,7 @@ void TextManager::setText(int id, const std::string& text) {
     if (textRenderers.find(id) != textRenderers.end()) {
         if (textRenderers[id]->getText() != text) {
             textRenderers[id]->setText(text);
+            _logger.debug("@%d: Text set to: %s", id, text);
         }
     }
 }
@@ -64,16 +72,28 @@ void TextManager::setFontColor(int id, float r, float g, float b, float a) {
         Color c = textRenderers[id]->getColor();
         if (c.r != r || c.g != g || c.b != b || c.a != a) {
             textRenderers[id]->setColor(r, g, b, a);
+            _logger.debug("@%d: color set to: R: %.2f, G: %.2f, B: %.2f, A: %.2f",
+                id,
+                static_cast<double>(r),
+                static_cast<double>(g),
+                static_cast<double>(b),
+                static_cast<double>(a));
         }
     }
 }
 
-void TextManager::setFont(int id, const std::string& fontPath) {
+void TextManager::setFont(int id, const std::string& fontName) {
     std::lock_guard<std::mutex> lock(managerMutex);
     if (textRenderers.find(id) != textRenderers.end()) {
-        std::string currentFont = textRenderers[id]->getFontPath();
-        if (currentFont != fontPath) {
-            textRenderers[id]->setFontPath(fontPath);
+        // Construct the expected path
+        std::filesystem::path newFontPath = "resources/fonts/" + fontName + ".ttf";
+        std::string newFontPathString = newFontPath.string();
+        if (std::filesystem::exists(newFontPath) && std::filesystem::is_regular_file(newFontPath)) {
+            std::string currentFontPath = textRenderers[id]->getFontPath();
+            if (newFontPathString != currentFontPath) {
+                textRenderers[id]->setFontPath(newFontPathString);
+                _logger.debug("@%d: Font path set to: %s", id, newFontPathString);
+            }
         }
     }
 }
@@ -83,6 +103,7 @@ void TextManager::setFontSize(int id, float desiredSize, float decreaseStep) {
     if (textRenderers.find(id) != textRenderers.end()) {
         if (textRenderers[id]->getFontSize() != desiredSize) {
             textRenderers[id]->setFontSize(desiredSize, decreaseStep);
+            _logger.debug("@%d: Set font size to: %.2f, decrease step: %.2f", id, static_cast<double>(desiredSize), static_cast<double>(decreaseStep));
         }
     }
 }
@@ -108,6 +129,7 @@ void TextManager::setZIndex(int id, int zIndex) {
         int currentZIndex = textRenderers[id]->getZIndex();
         if (currentZIndex != zIndex) {
             textRenderers[id]->setZIndex(zIndex);
+            _logger.debug("@%d: Set Z index to: %d", id, zIndex);
         }
     }
 }
@@ -118,6 +140,7 @@ void TextManager::setDebugMode(int id, bool showDebug) {
         bool debug = textRenderers[id]->getDebugLines();
         if (debug != showDebug) {
             textRenderers[id]->setDebugLines(showDebug);
+            _logger.debug("@%d: set debug to: %s", id, std::string(showDebug ? "true" : "false"));
         }
     }
 }

@@ -5,7 +5,6 @@
 #include <Poco/Exception.h>
 #include <iostream>
 #include <sstream>
-#include <filesystem>
 
 CommandProcessor::CommandProcessor(std::shared_ptr<ThreadSafeQueue<Command>> commandQueue, std::shared_ptr<DIContainer> diContainer)
     : _commandQueue(commandQueue), _isRunning(false), _diContainer(diContainer), _logger(Poco::Logger::get("CommandProcessor")) {
@@ -115,7 +114,7 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
         std::optional<double> fontSizeOptional = tryToGet<double>(textObject, "font_size");
         if (fontSizeOptional.has_value()) {
             double fontSize = fontSizeOptional.value();
-            _logger.debug("Setting font size to: " + std::to_string(fontSize));
+            _logger.debug("Setting font size to: %.2f", fontSize);
             _textManager->setFontSize(id, fontSize);
         }
     }
@@ -128,7 +127,7 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
                 double g = colorArray->getElement<double>(1);
                 double b = colorArray->getElement<double>(2);
                 double a = colorArray->getElement<double>(3);
-                _logger.debug("Setting font color to: R: %f, G: %f, B: %f, A: %f", r, g, b, a);
+                _logger.debug("Setting font color to: R: %.2f, G: %.2f, B: %.2f, A: %.2f", r, g, b, a);
                 _textManager->setFontColor(id, r, g, b, a);
             }
         }
@@ -149,18 +148,9 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
         std::optional<std::string> fontNameOptional = tryToGet<std::string>(textObject, "font");
         if (fontNameOptional.has_value()) {
             std::string fontName = fontNameOptional.value();
-
-            // Construct the expected path
-            std::filesystem::path fontPath = "resources/fonts/" + fontName + ".ttf";
-
-            // Check if the file exists and is an actual file (not a directory)
-            if (std::filesystem::exists(fontPath) && std::filesystem::is_regular_file(fontPath)) {
-                _logger.debug("Font found: %s", fontPath.string());
-                _textManager->setFont(id, fontPath.string());
-            }
-            else {
-                _logger.error("Font file does not exist at: %s", fontPath.string());
-            }
+            _textManager->setFont(id, fontName);
+        } else {
+            _logger.error("Could not find font name. Make sure it is a string and has no file ending");
         }
     }
 

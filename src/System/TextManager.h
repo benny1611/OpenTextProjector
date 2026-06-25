@@ -1,5 +1,6 @@
 #pragma once
 #include "TextRenderer.h"
+#include <Poco/Logger.h>
 #include <unordered_map>
 #include <vector>
 #include <mutex>
@@ -40,6 +41,7 @@ private:
 
     std::mutex managerMutex;
     int nextId = 1;
+    Poco::Logger& _logger;
 
     FT_Face getFaceHandle(const std::string& fontPath);
 };
