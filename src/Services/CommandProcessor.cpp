@@ -100,7 +100,6 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
                 Poco::StreamCopier::copyStream(decoder, outStream);
                 std::string utf8String = outStream.str();
 
-                _logger.debug("Handling text: %s", utf8String);
                 _textManager->setText(id, utf8String);
             } catch (const Poco::Exception& e) {
                 _logger.error("POCO Exception: %s", e.displayText());
@@ -114,7 +113,7 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
         std::optional<double> fontSizeOptional = tryToGet<double>(textObject, "font_size");
         if (fontSizeOptional.has_value()) {
             double fontSize = fontSizeOptional.value();
-            _logger.debug("Setting font size to: %.2f", fontSize);
+
             _textManager->setFontSize(id, fontSize);
         }
     }
@@ -127,7 +126,7 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
                 double g = colorArray->getElement<double>(1);
                 double b = colorArray->getElement<double>(2);
                 double a = colorArray->getElement<double>(3);
-                _logger.debug("Setting font color to: R: %.2f, G: %.2f, B: %.2f, A: %.2f", r, g, b, a);
+
                 _textManager->setFontColor(id, r, g, b, a);
             }
         }
@@ -159,7 +158,6 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
         if (zIndexOptional.has_value()) {
             int zIndex = zIndexOptional.value();
             if (zIndex >= 0) {
-                _logger.debug("Setting z index of %d to %d", id, zIndex);
                 _textManager->setZIndex(id, zIndex);
             } else {
                 _logger.error("zIndex must be positive");
