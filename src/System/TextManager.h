@@ -20,7 +20,8 @@ public:
 
     // Completely Thread-Safe Setter Facades for external pipeline workers
     void setText(int id, const std::string& text);
-    void setBoxDimensions(int id, float x, float y, float width, float height);
+    void setBoxPosition(int id, float x, float y);
+    void setBoxSize(int id, float width, float height);
     void setFontColor(int id, float r, float g, float b, float a);
     void setFont(int id, const std::string& fontPath);
     void setFontSize(int id, float desiredSize, float decreaseStep = 2.0f);

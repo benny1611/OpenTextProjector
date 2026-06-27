@@ -22,6 +22,8 @@ private:
     void processLoop();
     void applyCommand(const Command& cmd);
     void handleText(Poco::JSON::Object::Ptr data);
+    bool resolveBoxPosition(Poco::JSON::Object::Ptr textObject, float& x, float& y);
+    bool resolveBoxSize(Poco::JSON::Object::Ptr textObject, float& width, float& height);
     bool allManagersPresent();
     std::optional<int> resolveId(Poco::JSON::Object::Ptr data);
     template<typename T> std::optional<T> tryToGet(Poco::JSON::Object::Ptr object, const std::string& key);

@@ -5,6 +5,7 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <ft2build.h>
+#include <tuple>
 #include FT_FREETYPE_H
 
 enum class TextAlignment {
@@ -49,7 +50,9 @@ public:
 
     // Thread-safe data setting modifications (Triggers dirty state)
     void setText(const std::string& newText);
-    void setBox(float x, float y, float width, float height);
+    void setBoxDimensions(float x, float y, float width, float height);
+    void setBoxPosition(float x, float y);
+    void setBoxSize(float width, float height);
     void setColor(float r, float g, float b, float a);
     void setFontSize(float desiredSize, float decreaseStep);
     void setLineSpacing(float spacing);
@@ -68,6 +71,8 @@ public:
     std::string getFontPath() const { return fontPath; }
     std::string getText() const { return text; }
     Color getColor() const { return Color(colorR, colorG, colorB, colorA); }
+    std::tuple<float, float> getBoxPosition() { return std::make_tuple(boxX, boxY); }
+    std::tuple<float, float> getBoxSize() { return std::make_tuple(boxWidth, boxHeight); }
 
 private:
     int id;

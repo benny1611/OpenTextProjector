@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
+#include <tuple>
 
 TextManager::TextManager() : _logger(Poco::Logger::get("TextManager")) {
     if (FT_Init_FreeType(&ftLibrary)) {
@@ -35,7 +36,7 @@ int TextManager::createTextBox(float x, float y, float width, float height) {
     std::lock_guard<std::mutex> lock(managerMutex);
     int id = nextId++;
     auto renderer = std::make_unique<TextRenderer>(id);
-    renderer->setBox(x, y, width, height);
+    renderer->setBoxDimensions(x, y, width, height);
     textRenderers[id] = std::move(renderer);
     _logger.debug("Created text box at x: %.2f, y: %.2f, width: %.2f, height: %.2f, id: %d", 
         static_cast<double>(x), 
@@ -61,9 +62,36 @@ void TextManager::setText(int id, const std::string& text) {
     }
 }
 
-void TextManager::setBoxDimensions(int id, float x, float y, float width, float height) {
+/**
+* Sets the box position without checking of it's actually on the screen. I.e. a user can set the position posiztion outside of the visible area
+* TODO: pass the monitor manager to the constructor and check for such cases
+*/
+void TextManager::setBoxPosition(int id, float x, float y) {
     std::lock_guard<std::mutex> lock(managerMutex);
-    if (textRenderers.find(id) != textRenderers.end()) textRenderers[id]->setBox(x, y, width, height);
+    if (textRenderers.find(id) != textRenderers.end()) {
+        std::tuple<float, float> currentPos = textRenderers[id]->getBoxPosition();
+        float currentX = std::get<0>(currentPos);
+        float currentY = std::get<1>(currentPos);
+        if (x != currentX || y != currentY) {
+            textRenderers[id]->setBoxPosition(x, y);
+            _logger.debug("@%d: Box position set to: %.2f, %.2f", id, static_cast<double>(x), static_cast<double>(y));
+        }
+    }
+}
+/**
+* Sets the box size without checking if the size is bigger than the current display or if parts of it are not visible due to the position and size
+*/
+void TextManager::setBoxSize(int id, float width, float height) {
+    std::lock_guard<std::mutex> lock(managerMutex);
+    if (textRenderers.find(id) != textRenderers.end()) {
+        std::tuple<float, float> currentSize = textRenderers[id]->getBoxSize();
+        float currentWidth = std::get<0>(currentSize);
+        float currentHeight = std::get<1>(currentSize);
+        if (width != currentWidth || height != currentHeight) {
+            textRenderers[id]->setBoxSize(width, height);
+            _logger.debug("@%d: Box size set to: %.2f x %.2f", id, static_cast<double>(width), static_cast<double>(height));
+        }
+    }
 }
 
 void TextManager::setFontColor(int id, float r, float g, float b, float a) {

@@ -214,12 +214,14 @@ void TextRenderer::draw() {
 
 // Setter implementations targeting the conditional dirty state update
 void TextRenderer::setText(const std::string& newText) { if (text != newText) { text = newText; isDirty = true; } }
-void TextRenderer::setBox(float x, float y, float width, float height) { boxX = x; boxY = y; boxWidth = width; boxHeight = height; isDirty = true; }
-void TextRenderer::setColor(float r, float g, float b, float a) { colorR = r; colorG = g; colorB = b; colorA = a; }
+void TextRenderer::setBoxDimensions(float x, float y, float width, float height) { boxX = x; boxY = y; boxWidth = width; boxHeight = height; isDirty = true; }
+void TextRenderer::setBoxPosition(float x, float y) { boxX = x; boxY = y; isDirty = true; }
+void TextRenderer::setBoxSize(float width, float height) { boxWidth = width; boxHeight = height; isDirty = true; }
+void TextRenderer::setColor(float r, float g, float b, float a) { colorR = r; colorG = g; colorB = b; colorA = a; isDirty = true; }
 void TextRenderer::setFontSize(float desiredSize, float decreaseStep) { desiredFontSize = desiredSize; fontDecreaseStep = decreaseStep; isDirty = true; }
 void TextRenderer::setLineSpacing(float spacing) { lineSpacing = spacing; isDirty = true; }
 void TextRenderer::setWordWrap(bool wrap) { wordWrap = wrap; isDirty = true; }
 void TextRenderer::setFontPath(const std::string& path) { if (fontPath != path) { fontPath = path; isDirty = true; } }
 void TextRenderer::setAlignment(TextAlignment align) { alignment = align; isDirty = true; }
-void TextRenderer::setZIndex(int z) { zIndex = z; }
-void TextRenderer::setDebugLines(bool drawDebug) { drawDebugLines = drawDebug; }
+void TextRenderer::setZIndex(int z) { zIndex = z; isDirty = true; }
+void TextRenderer::setDebugLines(bool drawDebug) { drawDebugLines = drawDebug; isDirty = true; }

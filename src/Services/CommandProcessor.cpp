@@ -82,12 +82,14 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
         _logger.error("Could not parse the text object");
         return;
     }
+
     std::optional<int> idOptional = resolveId(textObject);
     if (!idOptional.has_value()) {
         _logger.error("Couldn't get or create the ID");
         return;
     }
     int id = idOptional.value();
+    bool created = !textObject->has("id");
 
     if (textObject->has("text")) {
         std::optional<std::string> base64StringOptional = tryToGet<std::string>(textObject, "text");
@@ -106,6 +108,26 @@ void CommandProcessor::handleText(Poco::JSON::Object::Ptr data) {
             } catch (const std::exception& e) {
                 _logger.error("Standard exception: %s", e.what());
             }
+        }
+    }
+
+    if (!created && textObject->has("box_position")) {
+        float x, y;
+        bool isBoxPositionResolved = resolveBoxPosition(textObject, x, y);
+        if (isBoxPositionResolved) {
+            _textManager->setBoxPosition(id, x, y);
+        } else {
+            _logger.error("Could not resolve the box position");
+        }
+    }
+
+    if (!created && textObject->has("box_size")) {
+        float width, height;
+        bool isBoxSizeResolved = resolveBoxSize(textObject, width, height);
+        if (isBoxSizeResolved) {
+            _textManager->setBoxSize(id, width, height);
+        } else {
+            _logger.error("Could not resolve the box size");
         }
     }
 
@@ -198,49 +220,66 @@ std::optional<int> CommandProcessor::resolveId(Poco::JSON::Object::Ptr textObjec
     else {
         _logger.debug("Creating new text box");
         // check given coordinates
-        float x;
-        float y;
-        if (textObject->has("box_position")) {
-            try {
-                Poco::JSON::Array::Ptr boxPositionArray = textObject->getArray("box_position");
-                if (boxPositionArray->size() != 2) {
-                    _logger.error("box position array must have exactly 2 elements: x and y");
-                    return std::nullopt;
-                }
-                x = boxPositionArray->getElement<float>(0);
-                y = boxPositionArray->getElement<float>(1);
-            }
-            catch (const Poco::Exception& e) {
-                _logger.error("Error while pasing the box position array: " + e.message());
-                return std::nullopt;
-            }
-        } else {
+        float x, y;
+        bool isBoxPositionResolved = resolveBoxPosition(textObject, x, y);
+        if (!isBoxPositionResolved) {
             _logger.error("No id given and box position not found");
             return std::nullopt;
         }
+        
         // check the given box size
-        float width;
-        float height;
-        if (textObject->has("box_size")) {
-            try {
-                Poco::JSON::Array::Ptr boxSizeArray = textObject->getArray("box_size");
-                if (boxSizeArray->size() != 2) {
-                    _logger.error("box size must have exactly 2 elements: width and height");
-                    return std::nullopt;
-                }
-                width = boxSizeArray->getElement<float>(0);
-                height = boxSizeArray->getElement<float>(1);
-            }
-            catch (const Poco::Exception& e) {
-                _logger.error("Error while parsing the box size: " + e.message());
-                return std::nullopt;
-            }
-        } else {
+        float width, height;
+        bool isBoxSizeResolved = resolveBoxSize(textObject, width, height);
+        if (!isBoxSizeResolved) {
             _logger.error("No id given and box size not found");
             return std::nullopt;
         }
 
         id = _textManager->createTextBox(x, y, width, height);
         return std::optional<int>(id);
+    }
+}
+
+bool CommandProcessor::resolveBoxPosition(Poco::JSON::Object::Ptr textObject, float& x, float& y) {
+    if (textObject->has("box_position")) {
+        try {
+            Poco::JSON::Array::Ptr boxPositionArray = textObject->getArray("box_position");
+            if (boxPositionArray->size() != 2) {
+                _logger.error("box position array must have exactly 2 elements: x and y");
+                return false;
+            }
+            x = boxPositionArray->getElement<float>(0);
+            y = boxPositionArray->getElement<float>(1);
+            return true;
+        } catch (const Poco::Exception& e) {
+            _logger.error("Error while pasing the box position array: " + e.message());
+            return false;
+        }
+    } else {
+        _logger.error("Box position not found");
+        return false;
+    }
+}
+
+bool CommandProcessor::resolveBoxSize(Poco::JSON::Object::Ptr textObject, float& width, float& height) {
+    if (textObject->has("box_size")) {
+        try {
+            Poco::JSON::Array::Ptr boxSizeArray = textObject->getArray("box_size");
+            if (boxSizeArray->size() != 2) {
+                _logger.error("box size must have exactly 2 elements: width and height");
+                return false;
+            }
+            width = boxSizeArray->getElement<float>(0);
+            height = boxSizeArray->getElement<float>(1);
+            return true;
+        }
+        catch (const Poco::Exception& e) {
+            _logger.error("Error while parsing the box size: " + e.message());
+            return false;
+        }
+    }
+    else {
+        _logger.error("Box size not found");
+        return false;
     }
 }
