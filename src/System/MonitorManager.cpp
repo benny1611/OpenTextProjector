@@ -1,5 +1,5 @@
 #include "MonitorManager.h"
-#include <iostream>
+#include <mutex>
 
 // GLFW uses a C-style callback, so we need a bridge to route it to our instance.
 static MonitorManager* g_MonitorManagerInstance = nullptr;

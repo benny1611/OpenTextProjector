@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.21)
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 # Automatically bootstrap vcpkg if the toolchain file is provided
 if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 endif()
 
-project(OpenTextProjector CXX)
+project(OpenTextProjector C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

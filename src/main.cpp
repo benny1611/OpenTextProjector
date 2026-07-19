@@ -189,10 +189,10 @@ int main() {
     }
 
     bool useHttps = config->getBool("server.use_https", false);
-    if (useHttps && !url._Starts_with("https://")) {
+    if (useHttps && url.rfind("https://", 0) != 0) {
         url = "https://" + url;
     }
-    else if(!useHttps && !url._Starts_with("http://")) {
+    else if(!useHttps && url.rfind("http://", 0) != 0) {
         url = "http://" + url;
     }
 

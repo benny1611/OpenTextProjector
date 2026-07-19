@@ -217,7 +217,7 @@ void AppWindow::draw() {
     ImVec2 checkBoxTextSize = ImGui::CalcTextSize(checkBoxText.c_str());
     float checkBoxTextX = (windowWidth - checkBoxTextSize.x) * 0.5;
     ImGui::SetCursorPosX(checkBoxTextX);
-    ImGui::Text(checkBoxText.c_str());
+    ImGui::TextUnformatted(checkBoxText.c_str());
     ImGui::SameLine();
     ImGui::Checkbox("##", &m_neverShowAgain);
 
